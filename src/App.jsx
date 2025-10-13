@@ -93,61 +93,84 @@ function App() {
     }
   };
 
-  const captureFromStream = () => {
-    if (!streamRef.current) return;
+ // ✅ Автозахват скриншотов + запись видео
+const startAutoCapture = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { mediaSource: 'screen' },
+      audio: true
+    });
 
+    streamRef.current = stream;
+    setIsRecording(true);
+    setRecordingMode('auto');
+
+    // --- 🎥 Запуск записи видео ---
+    const chunks = [];
+    const mediaRecorder = new MediaRecorder(stream, {
+      mimeType: 'video/webm;codecs=vp9'
+    });
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) chunks.push(event.data);
+    };
+
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const videoUrl = URL.createObjectURL(blob);
+      // Добавляем видео как первый шаг
+      addStep(videoUrl, 'video', true);
+    };
+
+    mediaRecorder.start();
+    mediaRecorderRef.current = mediaRecorder;
+
+    // --- 📸 Захват скриншотов каждые 3 секунды ---
     const video = document.createElement('video');
-    video.srcObject = streamRef.current;
-    video.play();
+    video.srcObject = stream;
+    await video.play();
 
-    video.onloadedmetadata = () => {
+    const captureInterval = setInterval(() => {
+      if (!streamRef.current) {
+        clearInterval(captureInterval);
+        return;
+      }
+
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0);
-      
       const imageData = canvas.toDataURL('image/png');
-      setSteps(prevSteps => {
-        const newStep = {
-          id: Date.now() + Math.random(),
-          media: imageData,
-          type: 'image',
-          title: `Шаг ${prevSteps.length + 1}`,
-          description: 'Добавьте описание шага...'
-        };
-        return [...prevSteps, newStep];
-      });
+      addStep(imageData, 'image');
+    }, 3000);
+
+    // --- Остановка ---
+    stream.getVideoTracks()[0].onended = () => {
+      clearInterval(captureInterval);
+      stopAutoCapture();
     };
-  };
 
-  const startAutoCapture = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { mediaSource: 'screen' }
-      });
+  } catch (err) {
+    console.error('Ошибка автозахвата:', err);
+    alert('Не удалось начать автоматический захват.');
+  }
+};
 
-      streamRef.current = stream;
-      setIsRecording(true);
-      setRecordingMode('auto');
+const stopAutoCapture = () => {
+  if (mediaRecorderRef.current) {
+    mediaRecorderRef.current.stop();
+    mediaRecorderRef.current = null;
+  }
+  if (streamRef.current) {
+    streamRef.current.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+  }
+  setIsRecording(false);
+  setRecordingMode('manual');
+};
 
-      stream.getVideoTracks()[0].onended = () => {
-        stopAutoCapture();
-      };
-    } catch (err) {
-      console.error('Ошибка автозахвата:', err);
-      alert('Не удалось начать автоматический захват.');
-    }
-  };
 
-  const stopAutoCapture = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setIsRecording(false);
-    setRecordingMode('manual');
-  };
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -165,17 +188,20 @@ function App() {
     }
   };
 
-  const addStep = (mediaData, type) => {
+// ✅ Добавляем шаг — теперь можно вставлять в начало (например, для видео)
+const addStep = (mediaData, type, insertAtStart = false) => {
+  setSteps(prevSteps => {
     const newStep = {
       id: Date.now(),
       media: mediaData,
-      type: type,
-      title: `Шаг ${steps.length + 1}`,
+      type,
+      title: `Шаг ${prevSteps.length + 1}`,
       description: 'Добавьте описание шага...'
     };
-    setSteps([...steps, newStep]);
-    setEditingStep(newStep.id);
-  };
+    return insertAtStart ? [newStep, ...prevSteps] : [...prevSteps, newStep];
+  });
+};
+
 
   const updateStep = (id, field, value) => {
     setSteps(steps.map(step => 
@@ -465,31 +491,13 @@ function App() {
           </div>
 
           {isRecording && (
-            <div className="mt-4 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
-              <p className="text-red-700 font-medium mb-3">
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 font-medium">
                 {recordingMode === 'auto' 
-                  ? '🔴 Режим захвата активен'
+                  ? '🔴 Идёт автоматический захват скриншотов каждые 3 секунды...'
                   : '🔴 Идёт запись видео...'
                 }
               </p>
-              {recordingMode === 'auto' && (
-                <div className="flex gap-3">
-                  <button
-                    onClick={captureFromStream}
-                    className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-bold text-lg shadow-lg hover:shadow-xl"
-                  >
-                    <Camera className="w-6 h-6" />
-                    Сделать скриншот
-                  </button>
-                  <button
-                    onClick={stopAutoCapture}
-                    className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
-                  >
-                    <Square className="w-5 h-5" />
-                    Завершить захват
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -506,7 +514,7 @@ function App() {
             </p>
             <ul className="text-left max-w-md mx-auto space-y-2 text-gray-600">
               <li>📸 <strong>Скриншот</strong> - один снимок экрана</li>
-              <li>🖱️ <strong>Авто-захват</strong> - режим с кнопкой для создания скриншотов</li>
+              <li>🔄 <strong>Авто-захват</strong> - автоматические скриншоты каждые 3 сек</li>
               <li>🎥 <strong>Записать видео</strong> - полная видеозапись экрана</li>
             </ul>
           </div>
