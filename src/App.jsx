@@ -366,7 +366,7 @@ const addStep = (mediaData, type, insertAtStart = false) => {
   <h1>${projectTitle}</h1>
   ${steps.map((step, index) => `
     <div class="step">
-      <div class="step-number">Шаг ${index + 1}</div>
+      
       <h2 class="step-title">${step.title}</h2>
       <p class="step-description">${step.description}</p>
       ${step.type === 'image' 
