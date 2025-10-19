@@ -373,8 +373,7 @@ function InnerApp() {
         newStep.mediaKey = String(newStep.id);
         saveMedia(newStep.mediaKey, mediaBlob).catch(() => {});
       }
-      const shouldPrepend = type === 'video' || insertAtStart;
-      return shouldPrepend ? [newStep, ...prev] : [...prev, newStep];
+      return insertAtStart ? [newStep, ...prev] : [...prev, newStep];
     });
   };
 
@@ -531,7 +530,7 @@ function InnerApp() {
     (async () => {
       try {
         const storeSteps = steps.map((s) => ({ ...s, media: s.type === 'video' ? null : s.media }));
-        await saveProject({ projectTitle, steps: storeSteps, settings: { annotationStyle, recordOnClickMode }, updatedAt: Date.now() });
+        await saveProject({ projectTitle, steps: storeSteps, settings: { annotationStyle }, updatedAt: Date.now() });
       } catch (e) { console.warn('Не удалось сохранить проект в IndexedDB:', e); }
     })();
   }, [projectTitle, steps, annotationStyle]);
@@ -582,7 +581,6 @@ export default function App() {
     </I18nProvider>
   );
 }
-
 
 
 

@@ -1,0 +1,10 @@
+    ctx.lineWidth = Math.max(4 * dpr, 2);
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.95)'; // красная стрелка
+    const dx = Math.round(80 * dpr);
+    const dy = Math.round(80 * dpr);
+    let fromX = x - dx;
+    let fromY = y - dy;
+    if (fromX < 10) fromX = 10;
+    if (fromY < 10) fromY = 10;
+    drawArrow(ctx, fromX, fromY, x, y, Math.max(14 * dpr, 10));
+    ctx.restore();

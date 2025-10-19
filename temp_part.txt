@@ -1,0 +1,50 @@
+        stopRecording();
+      };
+    } catch (err) {
+      console.error('Ошибка записи:', err);
+      alert('Не удалось начать запись экрана.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const startAutoCapture = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { mediaSource: 'screen' },
+        audio: true
+      });
+
+      streamRef.current = stream;
+      setIsRecording(true);
+      setRecordingMode('auto');
+
+      // Запускаем трекер действий
+      if (useLocalRecognition && actionTrackerRef.current) {
+        actionTrackerRef.current.startTracking();
+      }
+
+      const chunks = [];
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp9'
+      });
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const videoUrl = URL.createObjectURL(blob);
+        addStep(videoUrl, 'video', true, 'Полная видеозапись процесса');
+      };
+
+      mediaRecorder.start();
+      mediaRecorderRef.current = mediaRecorder;
+
+      const video = document.createElement('video');
