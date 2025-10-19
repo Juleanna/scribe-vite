@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Camera, Upload, Video, Square, Sparkles, Brain, ArrowUpRight, BoxSelect, Layers } from 'lucide-react';
+import { Camera, Upload, Video, Square, Sparkles, Brain, ArrowUpRight, BoxSelect, Layers, Mic, MicOff } from 'lucide-react';
 import { useI18n } from '../i18n';
 
 export default function Controls({
@@ -11,6 +11,9 @@ export default function Controls({
   setAnnotationStyle,
   recordOnClickMode,
   setRecordOnClickMode,
+  isDictating,
+  dictationSupported,
+  onToggleDictation,
   isRecording,
   recordingMode,
   onCaptureScreen,
@@ -91,6 +94,19 @@ export default function Controls({
             <div className="text-xs text-gray-500">{t('clickrec.hint')}</div>
           </div>
         </label>
+        {dictationSupported && (
+          <button
+            type="button"
+            onClick={onToggleDictation}
+            title={t('dictation.hint')}
+            className={`ml-6 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors text-sm font-medium ${
+              isDictating ? 'bg-rose-50 text-rose-700 border-rose-300' : 'bg-gray-50 text-gray-700 border-gray-300'
+            }`}
+          >
+            {isDictating ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+            <span>{t('dictation.label')} · {isDictating ? t('dictation.on') : t('dictation.off')}</span>
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3 mt-1">

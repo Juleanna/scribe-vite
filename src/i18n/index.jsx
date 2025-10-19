@@ -11,6 +11,12 @@ const messages = {
       recordingAuto: 'Идёт автосъёмка: снимок каждые 3 сек', recordingManual: 'Идёт запись экрана...',
       annotStyle: 'Стиль аннотации', arrow: 'Стрелка', box: 'Рамка', both: 'Оба'
     },
+    dictation: {
+      label: 'Диктовка',
+      on: 'Вкл',
+      off: 'Выкл',
+      hint: 'Alt+R — включить/выключить диктовку описания'
+    },
     clickrec: {
       label: 'Видео в кликовом режиме',
       hint: 'Если включено, при включении кликового режима будет запускаться запись экрана (может потребоваться подтверждение).'
@@ -32,6 +38,12 @@ const messages = {
       screenshot: 'Screenshot', autocapture: 'Auto-capture', record: 'Record', stop: 'Stop', upload: 'Upload file',
       recordingAuto: 'Auto-capturing: frame every 3s', recordingManual: 'Screen recording in progress...',
       annotStyle: 'Annotation style', arrow: 'Arrow', box: 'Box', both: 'Both'
+    },
+    dictation: {
+      label: 'Dictation',
+      on: 'On',
+      off: 'Off',
+      hint: 'Alt+R — toggle dictation for step description'
     },
     clickrec: {
       label: 'Record during click-mode',
