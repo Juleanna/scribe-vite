@@ -9,7 +9,7 @@ import { saveProject, loadProject, saveMedia, loadMedia } from './db';
 function InnerApp() {
   const [steps, setSteps] = useState([]);
   const [editingStep, setEditingStep] = useState(null);
-  const [projectTitle, setProjectTitle] = useState('Новая инструкция');
+  const [projectTitle, setProjectTitle] = useState('Нова інструкція');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingMode, setRecordingMode] = useState('manual');
   const [autoDescribe, setAutoDescribe] = useState(true);
@@ -101,8 +101,8 @@ function InnerApp() {
       const meta = data.meta || {};
       const elementText = formatElementFromMeta(meta.element);
       const descBase = elementText
-        ? `Клик по ${elementText} на странице: ${meta.title || ''}${meta.url ? ` (${meta.url})` : ''}`.trim()
-        : `Клик на странице: ${meta.title || ''}${meta.url ? ` (${meta.url})` : ''}`.trim();
+        ? `Клік по ${elementText} на сторінці: ${meta.title || ''}${meta.url ? ` (${meta.url})` : ''}`.trim()
+        : `Клік на сторінці: ${meta.title || ''}${meta.url ? ` (${meta.url})` : ''}`.trim();
       const description = descBase; // приоритет: описание по целевому элементу
       overlayClickAnnotate(data.dataUrl, meta).then((annotated) => {
         previousScreenshotRef.current = annotated;
@@ -239,20 +239,20 @@ function InnerApp() {
     const tag = String(el.tag).toLowerCase();
     const text = el.text || el.ariaLabel || el.name || el.placeholder || el.alt || '';
     const label = text ? `"${text}"` : '';
-    if (tag === 'button' || el.role === 'button') return `кнопке ${label}`.trim();
-    if (tag === 'a') return `ссылке ${label}`.trim();
+    if (tag === 'button' || el.role === 'button') return `кнопці ${label}`.trim();
+    if (tag === 'a') return `посиланні ${label}`.trim();
     if (tag === 'input') {
       const type = (el.type || 'text').toLowerCase();
-      if (type === 'checkbox') return `флажку ${label}`.trim();
-      if (type === 'radio') return `переключателю ${label}`.trim();
-      if (type === 'submit' || type === 'button') return `кнопке ${label}`.trim();
+      if (type === 'checkbox') return `прапорцю ${label}`.trim();
+      if (type === 'radio') return `перемикачу ${label}`.trim();
+      if (type === 'submit' || type === 'button') return `кнопці ${label}`.trim();
       return `полю ${label}`.trim();
     }
     if (tag === 'select') return `списку ${label}`.trim();
     if (tag === 'textarea') return `текстовому полю ${label}`.trim();
-    if (tag === 'img') return `изображению ${label}`.trim();
+    if (tag === 'img') return `зображенню ${label}`.trim();
     // общее: по элементу <tag>
-    return `элементу <${tag}> ${label}`.trim();
+    return `елементу <${tag}> ${label}`.trim();
   }
 
   const getLocalDescription = () => {
@@ -275,7 +275,7 @@ function InnerApp() {
               type: 'image',
               source: { type: 'base64', media_type: 'image/png', data: base64Image },
             },
-            { type: 'text', text: 'Опиши кратко, что изображено на скриншоте.' },
+            { type: 'text', text: 'Опиши коротко, що зображено на скріншоті.' },
           ],
         },
       ];
@@ -288,11 +288,11 @@ function InnerApp() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 200, messages }),
       });
-      if (!response.ok) throw new Error('Ошибка генерации описания');
+      if (!response.ok) throw new Error('Помилка створення опису');
       const data = await response.json();
       return data.content?.[0]?.text?.trim();
     } catch (e) {
-      console.error('Ошибка генерации описания:', e);
+      console.error('Помилка генерації опису:', e);
       return null;
     } finally {
       setIsGenerating(false);
@@ -313,15 +313,15 @@ function InnerApp() {
       ctx.drawImage(video, 0, 0);
       stream.getTracks().forEach((t) => t.stop());
       const imageData = canvas.toDataURL('image/png');
-      let description = 'Снимок экрана';
+      let description = 'Знімок екрану';
       if (autoDescribe) {
-        description = useLocalRecognition ? getLocalDescription() || 'Нет доступного локального описания' : await generateDescription(imageData, previousScreenshotRef.current);
+        description = useLocalRecognition ? getLocalDescription() || 'Немає доступного локального опису' : await generateDescription(imageData, previousScreenshotRef.current);
       }
       previousScreenshotRef.current = imageData;
       addStep(imageData, 'image', false, description);
     } catch (e) {
-      console.error('Ошибка при скриншоте:', e);
-      alert('Не удалось выполнить скриншот экрана.');
+      console.error('Помилка при скріншоті:', e);
+      alert('Не вдалося виконати скріншот екрану.');
     }
   };
 
@@ -336,7 +336,7 @@ function InnerApp() {
         const blob = new Blob(chunksRef.current, { type: 'video/webm' });
         const videoUrl = URL.createObjectURL(blob);
         objectUrlsRef.current.push(videoUrl);
-        addStep(videoUrl, 'video', false, 'Запись экрана завершена', blob);
+        addStep(videoUrl, 'video', false, 'Запис екрану завершено', blob);
         stream.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       };
@@ -345,8 +345,8 @@ function InnerApp() {
       setIsRecording(true);
       stream.getVideoTracks()[0].onended = () => stopRecording();
     } catch (e) {
-      console.error('Ошибка при начале записи:', e);
-      alert('Не удалось начать запись экрана.');
+      console.error('Помилка початку запису:', e);
+      alert('Не вдалося розпочати запис екрана.');
     }
   };
 
@@ -372,7 +372,7 @@ function InnerApp() {
         const blob = new Blob(chunks, { type: 'video/webm' });
         const videoUrl = URL.createObjectURL(blob);
         objectUrlsRef.current.push(videoUrl);
-        addStep(videoUrl, 'video', true, 'Автосъёмка завершена', blob);
+        addStep(videoUrl, 'video', true, 'Автозйомка завершена', blob);
       };
       mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
@@ -389,9 +389,9 @@ function InnerApp() {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0);
         const imageData = canvas.toDataURL('image/png');
-        let description = 'Снимок экрана';
+        let description = 'Знімок екрану';
         if (autoDescribe) {
-          description = useLocalRecognition ? getLocalDescription() || 'Нет доступного локального описания' : await generateDescription(imageData, previousScreenshotRef.current);
+          description = useLocalRecognition ? getLocalDescription() || 'Немає доступного локального опису' : await generateDescription(imageData, previousScreenshotRef.current);
         }
         previousScreenshotRef.current = imageData;
         addStep(imageData, 'image', false, description);
@@ -399,8 +399,8 @@ function InnerApp() {
 
       stream.getVideoTracks()[0].onended = () => { clearInterval(captureInterval); stopAutoCapture(); };
     } catch (e) {
-      console.error('Ошибка автосъёмки:', e);
-      alert('Не удалось запустить автосъёмку.');
+      console.error('Помилка автозйомки:', e);
+      alert('Не вдалося запустити автозйомку.');
     }
   };
 
@@ -427,7 +427,7 @@ function InnerApp() {
     } else if (file.type.startsWith('video/')) {
       const videoUrl = URL.createObjectURL(file);
       objectUrlsRef.current.push(videoUrl);
-      addStep(videoUrl, 'video', false, 'Загружено видео', file);
+      addStep(videoUrl, 'video', false, 'Завантажено відео', file);
     }
   };
 
@@ -437,8 +437,8 @@ function InnerApp() {
         id: Date.now() + Math.random(),
         media: mediaData,
         type,
-        title: `Шаг ${prev.length + 1}`,
-        description: customDescription || 'Готовлю описание шага...',
+        title: `Крок ${prev.length + 1}`,
+        description: customDescription || 'Готую опис кроку...',
         isGenerating: !customDescription && autoDescribe && !useLocalRecognition,
       };
       if (type === 'video' && mediaBlob) {
@@ -454,8 +454,8 @@ function InnerApp() {
     const step = steps.find((s) => s.id === stepId);
     if (!step || step.type !== 'image') return;
     setSteps(steps.map((s) => (s.id === stepId ? { ...s, isGenerating: true } : s)));
-    let description = useLocalRecognition ? getLocalDescription() || 'Нет локального описания действий' : await generateDescription(step.media);
-    setSteps(steps.map((s) => (s.id === stepId ? { ...s, description: description || 'Описание недоступно', isGenerating: false } : s)));
+    let description = useLocalRecognition ? getLocalDescription() || 'Немає локального опису дій' : await generateDescription(step.media);
+    setSteps(steps.map((s) => (s.id === stepId ? { ...s, description: description || 'Опис недоступний', isGenerating: false } : s)));
   };
 
   const updateStep = (id, field, value) => {
@@ -497,7 +497,7 @@ function InnerApp() {
   <h1>${projectTitle}</h1>
   ${steps.map((step, index) => `
     <div class="step">
-      <div class="step-number">Шаг ${index + 1}</div>
+      <div class="step-number">Крок ${index + 1}</div>
       <h2 class="step-title">${step.title}</h2>
       <p class="step-description">${step.description}</p>
       ${step.type === 'image' ? `<img src="${step.media}" alt="${step.title}" class="step-media">` : `<video src="${step.media}" controls class="step-media"></video>`}
@@ -520,11 +520,11 @@ function InnerApp() {
       '',
       ...steps.flatMap((step, index) => {
         const lines = [];
-        lines.push(`## Шаг ${index + 1}: ${step.title || 'Без названия'}`);
+        lines.push(`## Крок ${index + 1}: ${step.title || 'Без назви'}`);
         if (step.description) { lines.push(''); lines.push(step.description); }
         lines.push('');
-        if (step.type === 'image') lines.push(`![${step.title || 'Скриншот'}](${step.media})`);
-        else if (step.type === 'video') lines.push(`Видео: ${step.media}`);
+        if (step.type === 'image') lines.push(`![${step.title || 'Скріншот'}](${step.media})`);
+        else if (step.type === 'video') lines.push(`Відео: ${step.media}`);
         lines.push('');
         return lines;
       })
@@ -561,7 +561,7 @@ function InnerApp() {
   <h1>${projectTitle}</h1>
   ${steps.map((step, index) => `
     <div class="step">
-      <div class="step-number">Шаг ${index + 1}</div>
+      <div class="step-number">Крок ${index + 1}</div>
       <h2 class="step-title">${step.title}</h2>
       <p class="step-description">${step.description}</p>
       ${step.type === 'image' ? `<img src="${step.media}" alt="${step.title}" class="step-media">` : `<p style="color: #999; font-style: italic;">Видео: ${step.title}</p>`}
@@ -595,7 +595,7 @@ function InnerApp() {
         }
         if (saved && typeof saved.projectTitle === 'string') setProjectTitle(saved.projectTitle);
         if (saved && saved.settings && typeof saved.settings.annotationStyle === 'string') setAnnotationStyle(saved.settings.annotationStyle); if (saved && saved.settings && typeof saved.settings.recordOnClickMode === 'boolean') setRecordOnClickMode(saved.settings.recordOnClickMode);
-      } catch (e) { console.warn('Не удалось загрузить проект из IndexedDB:', e); }
+      } catch (e) { console.warn('Не вдалося завантажити проект з IndexedDB:', e); }
     })();
   }, []);
 
@@ -604,7 +604,7 @@ function InnerApp() {
       try {
         const storeSteps = steps.map((s) => ({ ...s, media: s.type === 'video' ? null : s.media }));
         await saveProject({ projectTitle, steps: storeSteps, settings: { annotationStyle, recordOnClickMode }, updatedAt: Date.now() });
-      } catch (e) { console.warn('Не удалось сохранить проект в IndexedDB:', e); }
+      } catch (e) { console.warn('Не вдалося зберегти проект у IndexedDB:', e); }
     })();
   }, [projectTitle, steps, annotationStyle]);
 

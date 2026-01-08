@@ -2,32 +2,32 @@ import { createContext, useContext, useMemo, useState, useEffect } from 'react';
 
 const messages = {
   ru: {
-    app: { defaultTitle: 'Новая инструкция', language: 'Язык' },
+    app: { defaultTitle: 'Нова інструкція', language: 'Мова' },
     export: { html: 'HTML', md: 'MD', pdf: 'PDF' },
-    header: { clickToEdit: 'Нажмите, чтобы изменить', titlePlaceholder: 'Название проекта', save: 'Сохранить' },
-    headerExt: { toggle: 'Кликовый режим', on: 'Вкл', off: 'Выкл' },
+    header: { clickToEdit: 'Натисніть, щоб змінити', titlePlaceholder: 'Назва проекту', save: 'Зберегти' },
+    headerExt: { toggle: 'Кліковий режим', on: 'Увімк', off: 'Вимк' },
     controls: {
-      screenshot: 'Скриншот', autocapture: 'Автосъёмка', record: 'Запись видео', stop: 'Остановить', upload: 'Загрузить файл',
-      recordingAuto: 'Идёт автосъёмка: снимок каждые 3 сек', recordingManual: 'Идёт запись экрана...',
-      annotStyle: 'Стиль аннотации', arrow: 'Стрелка', box: 'Рамка', both: 'Оба'
+      screenshot: 'Скріншот', autocapture: 'Автозйомка', record: 'Запис відео', stop: 'Зупинити', upload: 'Завантажити файл',
+      recordingAuto: 'Триває автозйомка: знімок кожні 3 сек.', recordingManual: 'Триває запис екрана...',
+      annotStyle: 'Стиль анотації', arrow: 'Стрілка', box: 'Рамка', both: 'Обидва'
     },
     dictation: {
-      label: 'Диктовка',
-      on: 'Вкл',
-      off: 'Выкл',
-      hint: 'Alt+R — включить/выключить диктовку описания'
+      label: 'Диктування',
+      on: 'Увімк',
+      off: 'Вимк',
+      hint: 'Alt+R — увімкнути/вимкнути диктування опису'
     },
     clickrec: {
-      label: 'Видео в кликовом режиме',
-      hint: 'Если включено, при включении кликового режима будет запускаться запись экрана (может потребоваться подтверждение).'
+      label: 'Відео у кліковому режимі',
+      hint: 'Якщо увімкнено, під час увімкнення клікового режиму буде запускатися запис екрана (може знадобитися підтвердження).'
     },
-    autod: { label: 'Автоописание шагов', local: 'Локальное распознавание (без AI)', regenerate: 'Перегенерировать описание', generating: 'Генерация...' },
+    autod: { label: 'Автоопис кроків', local: 'Локальне розпізнування (без AI)', regenerate: 'Перегенерувати опис', generating: 'Генерація...' },
     empty: {
-      title: 'Начните создавать инструкцию', subtitle: 'Выберите действие ниже:',
-      list1: '• Нажмите «Скриншот» — снимок экрана', list2: '• Включите «Автосъёмка» — кадр каждые 3 секунды',
-      list3: '• Выберите «Запись видео» — записать экран', list4: '• Включите локальное автоописание — без AI'
+      title: 'Почніть створювати інструкцію', subtitle: 'Виберіть дію нижче:',
+      list1: '• Натисніть «Скріншот» — знімок екрана', list2: '• Увімкніть «Автозйомка» — кадр кожні 3 секунди',
+      list3: '• Виберіть «Запис відео», щоб записати екран.', list4: '• Увімкніть локальний опис — без AI'
     },
-    step: { step: 'Шаг', titlePlaceholder: 'Название шага', descPlaceholder: 'Описание шага...', videoBadge: 'Видео', edit: 'Редактировать', save: 'Сохранить', moveUp: 'Переместить вверх', moveDown: 'Переместить вниз', delete: 'Удалить' },
+    step: { step: 'Крок', titlePlaceholder: 'Назва кроку', descPlaceholder: 'Опис кроку...', videoBadge: 'Відео', edit: 'Редагувати', save: 'Зберегти', moveUp: 'Перемістити вгору', moveDown: 'Перемістити вниз', delete: 'Видалити' },
   },
   en: {
     app: { defaultTitle: 'New Instruction', language: 'Language' },
