@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { I18nProvider } from './i18n';
+import { AuthProvider, useAuth } from './auth';
+import { api } from './api';
 import Header from './components/Header';
 import Controls from './components/Controls';
 import StepList from './components/StepList';
+import Login from './components/Login';
+import ProjectList from './components/ProjectList';
 import ActionTracker from './actionTracker';
-import { saveProject, loadProject, saveMedia, loadMedia } from './db';
 
 function InnerApp() {
+  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
+
+  // App-level state: which screen to show
+  const [currentProject, setCurrentProject] = useState(null); // null = project list
   const [steps, setSteps] = useState([]);
   const [editingStep, setEditingStep] = useState(null);
   const [projectTitle, setProjectTitle] = useState('Нова інструкція');
@@ -14,10 +21,9 @@ function InnerApp() {
   const [recordingMode, setRecordingMode] = useState('manual');
   const [autoDescribe, setAutoDescribe] = useState(true);
   const [useLocalRecognition, setUseLocalRecognition] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [annotationStyle, setAnnotationStyle] = useState('both');
   const [recordOnClickMode, setRecordOnClickMode] = useState(false);
-  const clickRecordRef = useRef(false); // запись запущена именно кликовым режимом
+  const clickRecordRef = useRef(false);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
@@ -26,12 +32,14 @@ function InnerApp() {
   const actionTrackerRef = useRef(null);
   const objectUrlsRef = useRef([]);
   const [extCaptureEnabled, setExtCaptureEnabled] = useState(false);
-  // Dictation (speech-to-text) for step description via hotkey
   const recognitionRef = useRef(null);
   const dictationTargetRef = useRef(null);
   const dictationTextRef = useRef('');
   const [isDictating, setIsDictating] = useState(false);
   const [dictationSupported, setDictationSupported] = useState(false);
+
+  // Debounce ref for saving project updates
+  const saveTimeoutRef = useRef(null);
 
   useEffect(() => {
     actionTrackerRef.current = new ActionTracker();
@@ -78,10 +86,9 @@ function InnerApp() {
 
   const startDictation = () => {
     if (!dictationSupported || !recognitionRef.current || isDictating) return;
-    // choose target step: currently editing or last step
     let targetId = editingStep;
     if (!targetId && steps.length > 0) targetId = steps[steps.length - 1].id;
-    if (!targetId) return; // nothing to append to
+    if (!targetId) return;
     dictationTargetRef.current = targetId;
     dictationTextRef.current = '';
     try { recognitionRef.current.start(); setIsDictating(true); } catch (_) {}
@@ -93,7 +100,7 @@ function InnerApp() {
     dictationTextRef.current = '';
   };
 
-  // Приём скриншотов от расширения через postMessage
+  // Extension screenshots via postMessage
   useEffect(() => {
     const onMessage = (event) => {
       const data = event.data;
@@ -103,7 +110,7 @@ function InnerApp() {
       const descBase = elementText
         ? `Клік по ${elementText} на сторінці: ${meta.title || ''}${meta.url ? ` (${meta.url})` : ''}`.trim()
         : `Клік на сторінці: ${meta.title || ''}${meta.url ? ` (${meta.url})` : ''}`.trim();
-      const description = descBase; // приоритет: описание по целевому элементу
+      const description = descBase;
       overlayClickAnnotate(data.dataUrl, meta).then((annotated) => {
         previousScreenshotRef.current = annotated;
         addStep(annotated, 'image', false, description);
@@ -117,13 +124,8 @@ function InnerApp() {
       if (!data || data.type !== 'scribe_capture_state') return;
       const enabled = !!data.enabled;
       setExtCaptureEnabled(enabled);
-      // авто-запуск/остановка записи при кликовом режиме
       if (enabled && recordOnClickMode && !isRecording) {
-        startRecording().then(() => {
-          clickRecordRef.current = true;
-        }).catch(() => {
-          // возможно требуется жест пользователя — проигнорируем
-        });
+        startRecording().then(() => { clickRecordRef.current = true; }).catch(() => {});
       }
       if (!enabled && isRecording && clickRecordRef.current) {
         stopRecording();
@@ -143,7 +145,6 @@ function InnerApp() {
     try { window.postMessage({ type: 'scribe_toggle_capture' }, '*'); } catch(_) {}
   };
 
-  // Hotkey: Alt+C toggles click-capture mode
   useEffect(() => {
     const onKeyDown = (e) => {
       try {
@@ -158,7 +159,6 @@ function InnerApp() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  // Hotkey: Alt+R toggles dictation (speech-to-text) for step description
   useEffect(() => {
     const onKeyDown = (e) => {
       try {
@@ -186,7 +186,6 @@ function InnerApp() {
     const x = Math.round((meta?.x ?? 0) * dpr);
     const y = Math.round((meta?.y ?? 0) * dpr);
     ctx.save();
-    // Сначала рамка вокруг элемента, если есть
     if (meta?.elementRect && annotationStyle !== 'arrow') {
       const r = meta.elementRect;
       const left = Math.max(0, Math.round(r.left * dpr));
@@ -195,17 +194,15 @@ function InnerApp() {
       const height = Math.round(r.height * dpr);
       const pad = Math.round(4 * dpr);
       ctx.lineWidth = Math.max(3 * dpr, 2);
-      ctx.strokeStyle = 'rgba(59, 130, 246, 0.95)'; // синяя рамка
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.95)';
       ctx.fillStyle = 'rgba(59, 130, 246, 0.12)';
       ctx.beginPath();
       ctx.rect(left - pad, top - pad, width + pad * 2, height + pad * 2);
       ctx.fill();
       ctx.stroke();
     }
-
-    // Затем стрелка к точке клика
     ctx.lineWidth = Math.max(4 * dpr, 2);
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.95)'; // красная стрелка
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.95)';
     const dx = Math.round(80 * dpr);
     const dy = Math.round(80 * dpr);
     let fromX = x - dx;
@@ -225,7 +222,6 @@ function InnerApp() {
     ctx.moveTo(fromX, fromY);
     ctx.lineTo(toX, toY);
     ctx.stroke();
-    // наконечник
     ctx.beginPath();
     ctx.moveTo(toX, toY);
     ctx.lineTo(toX - headLen * Math.cos(angle - Math.PI / 6), toY - headLen * Math.sin(angle - Math.PI / 6));
@@ -251,7 +247,6 @@ function InnerApp() {
     if (tag === 'select') return `списку ${label}`.trim();
     if (tag === 'textarea') return `текстовому полю ${label}`.trim();
     if (tag === 'img') return `зображенню ${label}`.trim();
-    // общее: по элементу <tag>
     return `елементу <${tag}> ${label}`.trim();
   }
 
@@ -264,38 +259,16 @@ function InnerApp() {
 
   const generateDescription = async (imageData, previousImage = null) => {
     if (!autoDescribe || useLocalRecognition) return null;
-    setIsGenerating(true);
     try {
-      const base64Image = imageData.split(',')[1];
-      const messages = [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: 'image/png', data: base64Image },
-            },
-            { type: 'text', text: 'Опиши коротко, що зображено на скріншоті.' },
-          ],
-        },
-      ];
-      if (previousImage) {
-        const prevBase64 = previousImage.split(',')[1];
-        messages[0].content.unshift({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: prevBase64 } });
+      const res = await api.describeImage(imageData, previousImage);
+      if (res.ok) {
+        const data = await res.json();
+        return data.description;
       }
-      const response = await fetch('http://localhost:3001/api/claude', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 200, messages }),
-      });
-      if (!response.ok) throw new Error('Помилка створення опису');
-      const data = await response.json();
-      return data.content?.[0]?.text?.trim();
+      return null;
     } catch (e) {
       console.error('Помилка генерації опису:', e);
       return null;
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -304,8 +277,8 @@ function InnerApp() {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: { mediaSource: 'screen' } });
       const video = document.createElement('video');
       video.srcObject = stream;
+      await new Promise((res, rej) => { video.onloadedmetadata = res; video.onerror = rej; });
       await video.play();
-      await new Promise((r) => (video.onloadedmetadata = r));
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -351,7 +324,7 @@ function InnerApp() {
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
     }
@@ -432,79 +405,94 @@ function InnerApp() {
   };
 
   const addStep = (mediaData, type, insertAtStart = false, customDescription = null, mediaBlob = null) => {
+    const tempId = Date.now() + Math.random();
+    const newStep = {
+      id: tempId,
+      media: mediaData,
+      type,
+      title: `Крок`,
+      description: customDescription || 'Готую опис кроку...',
+      isGenerating: !customDescription && autoDescribe && !useLocalRecognition,
+    };
+
     setSteps((prev) => {
-      const newStep = {
-        id: Date.now() + Math.random(),
-        media: mediaData,
-        type,
-        title: `Крок ${prev.length + 1}`,
-        description: customDescription || 'Готую опис кроку...',
-        isGenerating: !customDescription && autoDescribe && !useLocalRecognition,
-      };
-      if (type === 'video' && mediaBlob) {
-        newStep.mediaKey = String(newStep.id);
-        saveMedia(newStep.mediaKey, mediaBlob).catch(() => {});
-      }
+      newStep.title = `Крок ${prev.length + 1}`;
       const shouldPrepend = type === 'video' || insertAtStart;
       return shouldPrepend ? [newStep, ...prev] : [...prev, newStep];
     });
+
+    // Upload to server
+    if (currentProject?.id) {
+      const order = insertAtStart ? 0 : -1;
+      api.createStep(currentProject.id, {
+        mediaBase64: type === 'image' ? mediaData : null,
+        mediaBlob: type === 'video' ? mediaBlob : null,
+        mediaType: type,
+        title: newStep.title,
+        description: customDescription || '',
+        order: Math.max(order, 0),
+      }).then(async (res) => {
+        if (res.ok) {
+          const saved = await res.json();
+          setSteps(prev => prev.map(s =>
+            s.id === tempId ? { ...s, id: saved.id, media: saved.media_url || s.media } : s
+          ));
+        }
+      }).catch(() => {});
+    }
   };
 
   const regenerateDescription = async (stepId) => {
     const step = steps.find((s) => s.id === stepId);
     if (!step || step.type !== 'image') return;
-    setSteps(steps.map((s) => (s.id === stepId ? { ...s, isGenerating: true } : s)));
+    setSteps(prev => prev.map((s) => (s.id === stepId ? { ...s, isGenerating: true } : s)));
     let description = useLocalRecognition ? getLocalDescription() || 'Немає локального опису дій' : await generateDescription(step.media);
-    setSteps(steps.map((s) => (s.id === stepId ? { ...s, description: description || 'Опис недоступний', isGenerating: false } : s)));
+    setSteps(prev => prev.map((s) => (s.id === stepId ? { ...s, description: description || 'Опис недоступний', isGenerating: false } : s)));
+    // Sync to server
+    if (currentProject?.id) {
+      api.updateStep(currentProject.id, stepId, { description: description || '' }).catch(() => {});
+    }
   };
 
   const updateStep = (id, field, value) => {
-    setSteps(steps.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
+    setSteps(prev => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
+    // Debounced sync to server
+    if (currentProject?.id) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        api.updateStep(currentProject.id, id, { [field]: value }).catch(() => {});
+      }, 1000);
+    }
   };
 
   const deleteStep = (id) => {
-    setSteps(steps.filter((s) => s.id !== id));
+    setSteps(prev => prev.filter((s) => s.id !== id));
+    if (currentProject?.id) {
+      api.deleteStep(currentProject.id, id).catch(() => {});
+    }
   };
 
   const moveStep = (id, direction) => {
-    const index = steps.findIndex((s) => s.id === id);
-    if ((direction === 'up' && index === 0) || (direction === 'down' && index === steps.length - 1)) return;
-    const newSteps = [...steps];
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    [newSteps[index], newSteps[newIndex]] = [newSteps[newIndex], newSteps[index]];
-    setSteps(newSteps);
+    setSteps(prev => {
+      const index = prev.findIndex((s) => s.id === id);
+      if ((direction === 'up' && index === 0) || (direction === 'down' && index === prev.length - 1)) return prev;
+      const newSteps = [...prev];
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+      [newSteps[index], newSteps[newIndex]] = [newSteps[newIndex], newSteps[index]];
+      // Sync reorder to server
+      if (currentProject?.id) {
+        const ids = newSteps.map(s => s.id);
+        api.reorderSteps(currentProject.id, ids).catch(() => {});
+      }
+      return newSteps;
+    });
   };
 
+  const escapeHTML = (str) => String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
   const exportToHTML = () => {
-    const html = `
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${projectTitle}</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 900px; margin: 0 auto; padding: 40px 20px; background: #f5f5f5; }
-    h1 { color: #1a1a1a; margin-bottom: 40px; font-size: 2.5rem; }
-    .step { background: white; border-radius: 12px; padding: 30px; margin-bottom: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .step-number { display: inline-block; background: #6366f1; color: white; padding: 8px 16px; border-radius: 20px; font-weight: 600; margin-bottom: 15px; }
-    .step-title { font-size: 1.5rem; color: #1a1a1a; margin: 15px 0; }
-    .step-description { color: #666; line-height: 1.6; margin: 15px 0; }
-    .step-media { width: 100%; border-radius: 8px; margin-top: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-  </style>
-</head>
-<body>
-  <h1>${projectTitle}</h1>
-  ${steps.map((step, index) => `
-    <div class="step">
-      <div class="step-number">Крок ${index + 1}</div>
-      <h2 class="step-title">${step.title}</h2>
-      <p class="step-description">${step.description}</p>
-      ${step.type === 'image' ? `<img src="${step.media}" alt="${step.title}" class="step-media">` : `<video src="${step.media}" controls class="step-media"></video>`}
-    </div>
-  `).join('')}
-</body>
-</html>`;
+    const safeTitle = escapeHTML(projectTitle);
+    const html = `<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${safeTitle}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:900px;margin:0 auto;padding:40px 20px;background:#f5f5f5}h1{color:#1a1a1a;margin-bottom:40px;font-size:2.5rem}.step{background:white;border-radius:12px;padding:30px;margin-bottom:30px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}.step-number{display:inline-block;background:#6366f1;color:white;padding:8px 16px;border-radius:20px;font-weight:600;margin-bottom:15px}.step-title{font-size:1.5rem;color:#1a1a1a;margin:15px 0}.step-description{color:#666;line-height:1.6;margin:15px 0}.step-media{width:100%;border-radius:8px;margin-top:20px;box-shadow:0 4px 12px rgba(0,0,0,0.1)}</style></head><body><h1>${safeTitle}</h1>${steps.map((step, index) => `<div class="step"><div class="step-number">Крок ${index + 1}</div><h2 class="step-title">${escapeHTML(step.title)}</h2><p class="step-description">${escapeHTML(step.description)}</p>${step.type === 'image' ? `<img src="${step.media}" alt="${escapeHTML(step.title)}" class="step-media">` : `<video src="${step.media}" controls class="step-media"></video>`}</div>`).join('')}</body></html>`;
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -516,8 +504,7 @@ function InnerApp() {
 
   const exportToMarkdown = () => {
     const md = [
-      `# ${projectTitle}`,
-      '',
+      `# ${projectTitle}`, '',
       ...steps.flatMap((step, index) => {
         const lines = [];
         lines.push(`## Крок ${index + 1}: ${step.title || 'Без назви'}`);
@@ -540,78 +527,99 @@ function InnerApp() {
 
   const exportToPDF = async () => {
     const printWindow = window.open('', '_blank');
-    const html = `
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title>${projectTitle}</title>
-  <style>
-    @page { margin: 20mm; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 100%; margin: 0; padding: 0; }
-    h1 { color: #1a1a1a; margin-bottom: 30px; font-size: 2rem; page-break-after: avoid; }
-    .step { page-break-inside: avoid; margin-bottom: 40px; }
-    .step-number { display: inline-block; background: #6366f1; color: white; padding: 6px 12px; border-radius: 15px; font-weight: 600; margin-bottom: 10px; }
-    .step-title { font-size: 1.3rem; color: #1a1a1a; margin: 10px 0; }
-    .step-description { color: #666; line-height: 1.6; margin: 10px 0; }
-    .step-media { width: 100%; max-width: 100%; margin-top: 15px; border-radius: 8px; }
-  </style>
-</head>
-<body>
-  <h1>${projectTitle}</h1>
-  ${steps.map((step, index) => `
-    <div class="step">
-      <div class="step-number">Крок ${index + 1}</div>
-      <h2 class="step-title">${step.title}</h2>
-      <p class="step-description">${step.description}</p>
-      ${step.type === 'image' ? `<img src="${step.media}" alt="${step.title}" class="step-media">` : `<p style="color: #999; font-style: italic;">Видео: ${step.title}</p>`}
-    </div>
-  `).join('')}
-  <script>window.onload = () => { setTimeout(() => { window.print(); }, 500); };</script>
-</body>
-</html>`;
+    if (!printWindow) { alert('Не вдалося відкрити вікно друку.'); return; }
+    const safeTitle = escapeHTML(projectTitle);
+    const html = `<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"><title>${safeTitle}</title><style>@page{margin:20mm}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:100%;margin:0;padding:0}h1{color:#1a1a1a;margin-bottom:30px;font-size:2rem;page-break-after:avoid}.step{page-break-inside:avoid;margin-bottom:40px}.step-number{display:inline-block;background:#6366f1;color:white;padding:6px 12px;border-radius:15px;font-weight:600;margin-bottom:10px}.step-title{font-size:1.3rem;color:#1a1a1a;margin:10px 0}.step-description{color:#666;line-height:1.6;margin:10px 0}.step-media{width:100%;max-width:100%;margin-top:15px;border-radius:8px}</style></head><body><h1>${safeTitle}</h1>${steps.map((step, index) => `<div class="step"><div class="step-number">Крок ${index + 1}</div><h2 class="step-title">${escapeHTML(step.title)}</h2><p class="step-description">${escapeHTML(step.description)}</p>${step.type === 'image' ? `<img src="${step.media}" alt="${escapeHTML(step.title)}" class="step-media">` : `<p style="color:#999;font-style:italic;">Відео: ${escapeHTML(step.title)}</p>`}</div>`).join('')}<script>window.onload=()=>{setTimeout(()=>{window.print();},500)};</script></body></html>`;
     printWindow.document.write(html);
     printWindow.document.close();
   };
 
-  // IndexedDB загрузка/сохранение
+  // Load project from API when selected
   useEffect(() => {
+    if (!currentProject?.id) return;
     (async () => {
       try {
-        const saved = await loadProject();
-        if (saved && Array.isArray(saved.steps)) {
-          const restored = await Promise.all(saved.steps.map(async (s) => {
-            if (s.type === 'video' && s.mediaKey) {
-              const blob = await loadMedia(s.mediaKey);
-              if (blob) {
-                const url = URL.createObjectURL(blob);
-                objectUrlsRef.current.push(url);
-                return { ...s, media: url };
-              }
-            }
-            return s;
-          }));
-          setSteps(restored);
+        const res = await api.getProject(currentProject.id);
+        if (res.ok) {
+          const project = await res.json();
+          setProjectTitle(project.title);
+          setAnnotationStyle(project.annotation_style || 'both');
+          setRecordOnClickMode(project.record_on_click_mode || false);
+          setSteps((project.steps || []).map(s => ({
+            id: s.id,
+            media: s.media_url || '',
+            type: s.media_type,
+            title: s.title,
+            description: s.description,
+            isGenerating: false,
+          })));
         }
-        if (saved && typeof saved.projectTitle === 'string') setProjectTitle(saved.projectTitle);
-        if (saved && saved.settings && typeof saved.settings.annotationStyle === 'string') setAnnotationStyle(saved.settings.annotationStyle); if (saved && saved.settings && typeof saved.settings.recordOnClickMode === 'boolean') setRecordOnClickMode(saved.settings.recordOnClickMode);
-      } catch (e) { console.warn('Не вдалося завантажити проект з IndexedDB:', e); }
+      } catch (e) {
+        console.error('Failed to load project from API:', e);
+      }
     })();
-  }, []);
+  }, [currentProject?.id]);
 
+  // Save project title/settings to server (debounced)
   useEffect(() => {
-    (async () => {
-      try {
-        const storeSteps = steps.map((s) => ({ ...s, media: s.type === 'video' ? null : s.media }));
-        await saveProject({ projectTitle, steps: storeSteps, settings: { annotationStyle, recordOnClickMode }, updatedAt: Date.now() });
-      } catch (e) { console.warn('Не вдалося зберегти проект у IndexedDB:', e); }
-    })();
-  }, [projectTitle, steps, annotationStyle]);
+    if (!currentProject?.id) return;
+    clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      api.updateProject(currentProject.id, {
+        title: projectTitle,
+        annotation_style: annotationStyle,
+        record_on_click_mode: recordOnClickMode,
+      }).catch(() => {});
+    }, 1500);
+  }, [projectTitle, annotationStyle, recordOnClickMode, currentProject?.id]);
 
+  const handleBackToProjects = () => {
+    setCurrentProject(null);
+    setSteps([]);
+    setProjectTitle('Нова інструкція');
+  };
+
+  // Loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center">
+        <div className="animate-pulse text-indigo-600 text-lg">Завантаження...</div>
+      </div>
+    );
+  }
+
+  // Not authenticated — show login
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
+  // Authenticated but no project selected — show project list
+  if (!currentProject) {
+    return (
+      <ProjectList
+        onSelectProject={(project) => setCurrentProject(project)}
+        onNewProject={(project) => setCurrentProject(project)}
+      />
+    );
+  }
+
+  // Project editor
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-6">
       <div className="max-w-6xl mx-auto">
-        <Header projectTitle={projectTitle} setProjectTitle={setProjectTitle} steps={steps} exportToHTML={exportToHTML} exportToPDF={exportToPDF} exportToMarkdown={exportToMarkdown} extCaptureEnabled={extCaptureEnabled} onToggleExtensionCapture={toggleExtensionCapture} />
+        <Header
+          projectTitle={projectTitle}
+          setProjectTitle={setProjectTitle}
+          steps={steps}
+          exportToHTML={exportToHTML}
+          exportToPDF={exportToPDF}
+          exportToMarkdown={exportToMarkdown}
+          extCaptureEnabled={extCaptureEnabled}
+          onToggleExtensionCapture={toggleExtensionCapture}
+          onBackToProjects={handleBackToProjects}
+          user={user}
+          onLogout={logout}
+        />
         <Controls
           autoDescribe={autoDescribe}
           setAutoDescribe={setAutoDescribe}
@@ -653,12 +661,9 @@ function InnerApp() {
 export default function App() {
   return (
     <I18nProvider>
-      <InnerApp />
+      <AuthProvider>
+        <InnerApp />
+      </AuthProvider>
     </I18nProvider>
   );
 }
-
-
-
-
-

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, FileDown, FileText } from 'lucide-react';
+import { Download, FileDown, FileText, ArrowLeft, LogOut } from 'lucide-react';
 import { useI18n } from '../i18n';
 
 export default function Header({
@@ -11,6 +11,9 @@ export default function Header({
   exportToMarkdown,
   extCaptureEnabled,
   onToggleExtensionCapture,
+  onBackToProjects,
+  user,
+  onLogout,
 }) {
   const { t, locale, setLocale } = useI18n();
   const [isEditing, setIsEditing] = useState(false);
@@ -19,6 +22,15 @@ export default function Header({
     <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
         <div className="flex items-center gap-3">
+          {onBackToProjects && (
+            <button
+              onClick={onBackToProjects}
+              className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              title={t('header.back')}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          )}
           <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 font-bold">S</span>
           {isEditing ? (
             <input
@@ -47,11 +59,11 @@ export default function Header({
           <div className="inline-flex items-center rounded-full bg-gray-100 p-1 border border-gray-200" role="group" aria-label={t('app.language')}>
             <button
               type="button"
-              onClick={() => setLocale('ru')}
-              aria-pressed={locale === 'ru'}
-              className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${locale === 'ru' ? 'bg-indigo-600 text-white shadow' : 'text-gray-700 hover:text-gray-900'}`}
+              onClick={() => setLocale('uk')}
+              aria-pressed={locale === 'uk'}
+              className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${locale === 'uk' ? 'bg-indigo-600 text-white shadow' : 'text-gray-700 hover:text-gray-900'}`}
             >
-              RU
+              UK
             </button>
             <button
               type="button"
@@ -85,6 +97,27 @@ export default function Header({
               <button onClick={exportToPDF} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
                 <FileDown className="w-5 h-5" />
                 {t('export.pdf')}
+              </button>
+            </div>
+          )}
+
+          {/* User menu */}
+          {user && (
+            <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-200">
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-full" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold">
+                  {(user.email || '?')[0].toUpperCase()}
+                </div>
+              )}
+              <span className="text-sm text-gray-600 hidden md:inline">{user.email}</span>
+              <button
+                onClick={onLogout}
+                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                title={t('header.logout')}
+              >
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
           )}
