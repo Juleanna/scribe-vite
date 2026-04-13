@@ -1,6 +1,8 @@
 @echo off
 title Scribe
 
+set DJANGO_DEBUG=True
+
 echo ========================================
 echo   Scribe - Starting project
 echo ========================================
@@ -35,7 +37,6 @@ if not exist "node_modules" (
 
 echo [3/4] Running DB migrations...
 cd backend
-set DJANGO_DEBUG=True
 python manage.py migrate --noinput >nul 2>&1
 cd ..
 
@@ -49,7 +50,7 @@ echo   Press Ctrl+C to stop
 echo ========================================
 echo.
 
-start "Scribe Backend" /min cmd /c "cd backend && set DJANGO_DEBUG=True && python manage.py runserver 8000"
+start "Scribe Backend" /min cmd /k "set DJANGO_DEBUG=True && cd /d %~dp0backend && python manage.py runserver 8000"
 
 timeout /t 3 /nobreak >nul
 
