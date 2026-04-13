@@ -1,8 +1,10 @@
+import secrets
 from urllib.parse import urlencode
 
 import requests as http_requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
 from django.shortcuts import redirect
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -100,6 +102,104 @@ class ChangePasswordView(APIView):
         user.set_password(serializer.validated_data["new_password"])
         user.save()
         return Response({"detail": "Password changed."})
+
+
+# ---------------------------------------------------------------------------
+# Email verification
+# ---------------------------------------------------------------------------
+
+
+class SendVerificationEmailView(APIView):
+    """POST /auth/send-verification/ -- send email verification link."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        user = request.user
+        if user.is_email_verified:
+            return Response({"detail": "Email already verified."})
+        token = secrets.token_urlsafe(32)
+        user.email_verification_token = token
+        user.save(update_fields=["email_verification_token"])
+        verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
+        send_mail(
+            "Scribe \u2014 \u043f\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044c email",
+            f"\u041f\u0435\u0440\u0435\u0439\u0434\u0456\u0442\u044c \u0437\u0430 \u043f\u043e\u0441\u0438\u043b\u0430\u043d\u043d\u044f\u043c: {verify_url}",
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=True,
+        )
+        return Response({"detail": "Verification email sent."})
+
+
+class VerifyEmailView(APIView):
+    """GET /auth/verify-email/?token=... -- verify email address."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request):
+        token = request.query_params.get("token")
+        if not token:
+            return Response({"detail": "Token required."}, status=status.HTTP_400_BAD_REQUEST)
+        user = User.objects.filter(email_verification_token=token).first()
+        if not user:
+            return Response({"detail": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST)
+        user.is_email_verified = True
+        user.email_verification_token = None
+        user.save(update_fields=["is_email_verified", "email_verification_token"])
+        return Response({"detail": "Email verified."})
+
+
+# ---------------------------------------------------------------------------
+# Password reset
+# ---------------------------------------------------------------------------
+
+
+class RequestPasswordResetView(APIView):
+    """POST /auth/request-password-reset/ -- send password reset email."""
+
+    permission_classes = (AllowAny,)
+    throttle_classes = (AuthRateThrottle,)
+
+    def post(self, request):
+        email = request.data.get("email")
+        user = User.objects.filter(email=email).first()
+        if user:
+            token = secrets.token_urlsafe(32)
+            user.email_verification_token = token  # reuse field for reset
+            user.save(update_fields=["email_verification_token"])
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+            send_mail(
+                "Scribe \u2014 \u0441\u043a\u0438\u0434\u0430\u043d\u043d\u044f \u043f\u0430\u0440\u043e\u043b\u044f",
+                f"\u041f\u0435\u0440\u0435\u0439\u0434\u0456\u0442\u044c \u0437\u0430 \u043f\u043e\u0441\u0438\u043b\u0430\u043d\u043d\u044f\u043c: {reset_url}",
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=True,
+            )
+        # Always return 200 to not leak user existence
+        return Response({"detail": "If account exists, reset email sent."})
+
+
+class ResetPasswordView(APIView):
+    """POST /auth/reset-password/ -- reset password with token."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        token = request.data.get("token")
+        new_password = request.data.get("new_password")
+        if not token or not new_password or len(new_password) < 8:
+            return Response(
+                {"detail": "Token and password (8+ chars) required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user = User.objects.filter(email_verification_token=token).first()
+        if not user:
+            return Response({"detail": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST)
+        user.set_password(new_password)
+        user.email_verification_token = None
+        user.save(update_fields=["password", "email_verification_token"])
+        return Response({"detail": "Password reset."})
 
 
 # ---------------------------------------------------------------------------

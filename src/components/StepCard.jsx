@@ -1,9 +1,12 @@
-import { Edit2, Save, MoveUp, MoveDown, Trash2, Sparkles, Brain } from 'lucide-react';
+import { useState } from 'react';
+import { Edit2, Save, MoveUp, MoveDown, Trash2, Sparkles, Brain, Pencil } from 'lucide-react';
 import { useI18n } from '../i18n';
+import ImageEditor from './ImageEditor';
 
 export default function StepCard({ step, index, editingStep, setEditingStep, autoDescribe, useLocalRecognition, updateStep, regenerateDescription, moveStep, deleteStep, isLast, onDragStart, onDragOver, onDrop, onDragEnd, isDragging, isDragOver }) {
   const { t } = useI18n();
   const isEditing = editingStep === step.id;
+  const [showImageEditor, setShowImageEditor] = useState(false);
   return (
     <div
       draggable
@@ -23,6 +26,11 @@ export default function StepCard({ step, index, editingStep, setEditingStep, aut
             {editingStep !== step.id && (
               <button onClick={() => setEditingStep(step.id)} className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors" title={t('step.edit')} aria-label={t('step.edit')}>
                 <Edit2 className="w-5 h-5" />
+              </button>
+            )}
+            {step.type === 'image' && (
+              <button onClick={() => setShowImageEditor(true)} className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors" title={t('editor.editImage')} aria-label={t('editor.editImage')}>
+                <Pencil className="w-5 h-5" />
               </button>
             )}
             <button onClick={() => moveStep(step.id, 'up')} disabled={index === 0} className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title={t('step.moveUp')} aria-label={t('step.moveUp')}>
@@ -84,7 +92,18 @@ export default function StepCard({ step, index, editingStep, setEditingStep, aut
           )}
 
           {step.type === 'image' ? (
-            <img src={step.media} alt={step.title} className="w-full rounded-lg shadow-md dark:shadow-gray-900/20 mt-4" />
+            <div className="relative mt-4 group">
+              <img src={step.media} alt={step.title} className="w-full rounded-lg shadow-md dark:shadow-gray-900/20" />
+              <button
+                onClick={() => setShowImageEditor(true)}
+                className="absolute top-2 right-2 p-2 min-w-[44px] min-h-[44px] flex items-center gap-1.5 bg-white/90 dark:bg-gray-800/90 text-indigo-600 dark:text-indigo-400 rounded-lg shadow hover:bg-white dark:hover:bg-gray-800 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 text-sm font-medium"
+                title={t('editor.editImage')}
+                aria-label={t('editor.editImage')}
+              >
+                <Pencil className="w-4 h-4" />
+                <span className="hidden sm:inline">{t('editor.editImage')}</span>
+              </button>
+            </div>
           ) : (
             <video src={step.media} controls className="w-full rounded-lg shadow-md dark:shadow-gray-900/20 mt-4" />
           )}
@@ -95,6 +114,11 @@ export default function StepCard({ step, index, editingStep, setEditingStep, aut
           {editingStep !== step.id && (
             <button onClick={() => setEditingStep(step.id)} className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors" title={t('step.edit')} aria-label={t('step.edit')}>
               <Edit2 className="w-5 h-5" />
+            </button>
+          )}
+          {step.type === 'image' && (
+            <button onClick={() => setShowImageEditor(true)} className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors" title={t('editor.editImage')} aria-label={t('editor.editImage')}>
+              <Pencil className="w-5 h-5" />
             </button>
           )}
           <button onClick={() => moveStep(step.id, 'up')} disabled={index === 0} className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title={t('step.moveUp')} aria-label={t('step.moveUp')}>
@@ -108,6 +132,17 @@ export default function StepCard({ step, index, editingStep, setEditingStep, aut
           </button>
         </div>
       </div>
+
+      {showImageEditor && step.type === 'image' && (
+        <ImageEditor
+          imageUrl={step.media}
+          onSave={(newDataUrl) => {
+            updateStep(step.id, 'media', newDataUrl);
+            setShowImageEditor(false);
+          }}
+          onClose={() => setShowImageEditor(false)}
+        />
+      )}
     </div>
   );
 }

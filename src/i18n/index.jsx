@@ -3,7 +3,7 @@ import { createContext, useContext, useMemo, useState, useEffect } from 'react';
 const messages = {
   uk: {
     app: { defaultTitle: 'Нова інструкція', language: 'Мова' },
-    export: { html: 'HTML', md: 'MD', pdf: 'PDF' },
+    export: { html: 'HTML', md: 'MD', pdf: 'PDF', docx: 'DOCX' },
     header: { clickToEdit: 'Натисніть, щоб змінити', titlePlaceholder: 'Назва проекту', save: 'Зберегти', back: 'Назад до проектів', logout: 'Вийти' },
     headerExt: { toggle: 'Кліковий режим', on: 'Увімк', off: 'Вимк' },
     controls: {
@@ -77,7 +77,7 @@ const messages = {
   },
   en: {
     app: { defaultTitle: 'New Instruction', language: 'Language' },
-    export: { html: 'HTML', md: 'MD', pdf: 'PDF' },
+    export: { html: 'HTML', md: 'MD', pdf: 'PDF', docx: 'DOCX' },
     header: { clickToEdit: 'Click to edit', titlePlaceholder: 'Project title', save: 'Save', back: 'Back to projects', logout: 'Logout' },
     headerExt: { toggle: 'Click Capture', on: 'On', off: 'Off' },
     controls: {

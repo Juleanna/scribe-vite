@@ -32,8 +32,8 @@ class LoginSerializer(serializers.Serializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name", "locale", "avatar_url")
-        read_only_fields = ("id", "email")
+        fields = ("id", "email", "first_name", "last_name", "locale", "avatar_url", "plan", "plan_expires_at", "brand_name", "brand_logo_url")
+        read_only_fields = ("id", "email", "plan", "plan_expires_at")
 
 
 class ChangePasswordSerializer(serializers.Serializer):

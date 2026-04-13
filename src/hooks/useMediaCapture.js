@@ -36,6 +36,28 @@ function drawArrow(ctx, fromX, fromY, toX, toY, headLen) {
   ctx.stroke();
 }
 
+async function compressImage(dataUrl, maxWidth = 1920, quality = 0.85) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width <= maxWidth) {
+        resolve(dataUrl);
+        return;
+      }
+      height = Math.round(height * (maxWidth / width));
+      width = maxWidth;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
 export default function useMediaCapture({ autoDescribe, useLocalRecognition, annotationStyle, addStep, isAuthenticated }) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingMode, setRecordingMode] = useState('manual');
@@ -136,7 +158,8 @@ export default function useMediaCapture({ autoDescribe, useLocalRecognition, ann
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0);
       stream.getTracks().forEach((t) => t.stop());
-      const imageData = canvas.toDataURL('image/png');
+      const rawImageData = canvas.toDataURL('image/png');
+      const imageData = await compressImage(rawImageData);
       let description = 'Знімок екрану';
       if (autoDescribe) {
         description = useLocalRecognition ? getLocalDescription() || 'Немає доступного локального опису' : await generateDescription(imageData, previousScreenshotRef.current);
@@ -221,7 +244,8 @@ export default function useMediaCapture({ autoDescribe, useLocalRecognition, ann
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0);
-        const imageData = canvas.toDataURL('image/png');
+        const rawImageData = canvas.toDataURL('image/png');
+        const imageData = await compressImage(rawImageData);
         let description = 'Знімок екрану';
         if (autoDescribe) {
           description = useLocalRecognition ? getLocalDescription() || 'Немає доступного локального опису' : await generateDescription(imageData, previousScreenshotRef.current);
@@ -243,7 +267,8 @@ export default function useMediaCapture({ autoDescribe, useLocalRecognition, ann
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = async (event) => {
-        const imageData = event.target.result;
+        const rawImageData = event.target.result;
+        const imageData = await compressImage(rawImageData);
         const description = useLocalRecognition ? getLocalDescription() : await generateDescription(imageData);
         addStep(imageData, 'image', false, description);
       };

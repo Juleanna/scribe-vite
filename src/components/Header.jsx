@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Download, FileDown, FileText, ArrowLeft, LogOut, ChevronDown, Moon, Sun } from 'lucide-react';
+import { Download, FileDown, FileText, FileType, ArrowLeft, LogOut, ChevronDown, Moon, Sun, Undo2, Redo2 } from 'lucide-react';
 import { useI18n } from '../i18n';
+import SaveIndicator from './SaveIndicator';
 
 export default function Header({
   projectTitle,
@@ -9,6 +10,8 @@ export default function Header({
   exportToHTML,
   exportToPDF,
   exportToMarkdown,
+  exportToDocx,
+  saveStatus,
   extCaptureEnabled,
   onToggleExtensionCapture,
   onBackToProjects,
@@ -17,6 +20,10 @@ export default function Header({
   onOpenProfile,
   dark,
   setDark,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }) {
   const { t, locale, setLocale } = useI18n();
   const [isEditing, setIsEditing] = useState(false);
@@ -57,6 +64,7 @@ export default function Header({
               {projectTitle}
             </h1>
           )}
+          <SaveIndicator status={saveStatus} />
         </div>
 
         <div className="flex items-center gap-2 md:gap-3 flex-wrap">
@@ -101,6 +109,30 @@ export default function Header({
             <span className="text-sm font-medium">{extCaptureEnabled ? t('headerExt.on') : t('headerExt.off')}</span>
           </button>
 
+          {/* Undo / Redo */}
+          {onUndo && (
+            <div className="flex gap-1">
+              <button
+                onClick={onUndo}
+                disabled={canUndo && !canUndo()}
+                className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                title={`${t('undo.undo')} (Ctrl+Z)`}
+                aria-label={t('undo.undo')}
+              >
+                <Undo2 className="w-5 h-5" />
+              </button>
+              <button
+                onClick={onRedo}
+                disabled={canRedo && !canRedo()}
+                className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                title={`${t('undo.redo')} (Ctrl+Shift+Z)`}
+                aria-label={t('undo.redo')}
+              >
+                <Redo2 className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
           {steps.length > 0 && (
             <>
               {/* Desktop export buttons */}
@@ -116,6 +148,10 @@ export default function Header({
                 <button onClick={exportToPDF} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 min-h-[44px] rounded-lg hover:bg-blue-700 transition-colors font-medium">
                   <FileDown className="w-5 h-5" />
                   {t('export.pdf')}
+                </button>
+                <button onClick={exportToDocx} className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 min-h-[44px] rounded-lg hover:bg-purple-700 transition-colors font-medium">
+                  <FileType className="w-5 h-5" />
+                  {t('export.docx')}
                 </button>
               </div>
 
@@ -151,6 +187,13 @@ export default function Header({
                     >
                       <FileDown className="w-4 h-4 text-blue-600" />
                       {t('export.pdf')}
+                    </button>
+                    <button
+                      onClick={() => { exportToDocx(); setExportOpen(false); }}
+                      className="flex items-center gap-2 w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 border-t border-gray-100 dark:border-gray-700 min-h-[44px]"
+                    >
+                      <FileType className="w-4 h-4 text-purple-600" />
+                      {t('export.docx')}
                     </button>
                   </div>
                 )}

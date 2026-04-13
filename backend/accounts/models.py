@@ -16,6 +16,11 @@ class User(AbstractUser):
         UK = "uk", "Українська"
         EN = "en", "English"
 
+    class PlanChoice(models.TextChoices):
+        FREE = 'free', 'Free'
+        PRO = 'pro', 'Pro'
+        TEAM = 'team', 'Team'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     username = None  # type: ignore[assignment]
     email = models.EmailField("email address", unique=True)
@@ -24,6 +29,18 @@ class User(AbstractUser):
     github_id = models.IntegerField(null=True, blank=True, unique=True)
     avatar_url = models.URLField(max_length=500, null=True, blank=True)
     locale = models.CharField(max_length=2, choices=Locale.choices, default=Locale.UK)
+
+    # Plan
+    plan = models.CharField(max_length=10, choices=PlanChoice.choices, default=PlanChoice.FREE)
+    plan_expires_at = models.DateTimeField(blank=True, null=True)
+
+    # Custom branding
+    brand_name = models.CharField(max_length=100, blank=True, default='')
+    brand_logo_url = models.URLField(blank=True, default='')
+
+    # Email verification
+    is_email_verified = models.BooleanField(default=False)
+    email_verification_token = models.CharField(max_length=64, blank=True, null=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS: list[str] = []

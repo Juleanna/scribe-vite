@@ -194,6 +194,23 @@ class ApiClient {
   async createWebhook(data) { return this.request('/webhooks/', { method: 'POST', body: JSON.stringify(data) }); }
   async deleteWebhook(id) { return this.request(`/webhooks/${id}/`, { method: 'DELETE' }); }
 
+  // Password reset
+  async requestPasswordReset(email) {
+    return fetch(`${API_BASE}/auth/request-password-reset/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token, newPassword) {
+    return fetch(`${API_BASE}/auth/reset-password/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, new_password: newPassword }),
+    });
+  }
+
   // AI
   async describeImage(imageBase64, previousImageBase64) {
     return this.request('/ai/describe/', {
