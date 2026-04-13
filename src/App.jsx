@@ -47,7 +47,7 @@ function InnerApp() {
   const [useLocalRecognition, setUseLocalRecognition] = useState(true);
   const [annotationStyle, setAnnotationStyle] = useState('both');
   const [recordOnClickMode, setRecordOnClickMode] = useState(false);
-  const [saveStatus, setSaveStatus] = useState(null); // 'saved' | 'saving' | 'error'
+  const [saveStatus, setSaveStatus] = useState('saved'); // 'saved' | 'saving' | 'error'
 
   const saveTimeoutRef = useRef(null);
 
@@ -85,8 +85,9 @@ function InnerApp() {
           setSteps(prev => prev.map(s =>
             s.id === tempId ? { ...s, id: saved.id, media: saved.media_url || s.media } : s
           ));
-        }
-      }).catch(() => {});
+          setSaveStatus('saved');
+        } else { setSaveStatus('error'); }
+      }).catch(() => { setSaveStatus('error'); });
     }
   };
 
@@ -106,7 +107,10 @@ function InnerApp() {
   const deleteStep = (id) => {
     setSteps(prev => prev.filter((s) => s.id !== id));
     if (currentProject?.id) {
-      api.deleteStep(currentProject.id, id).catch(() => {});
+      setSaveStatus('saving');
+      api.deleteStep(currentProject.id, id)
+        .then((res) => { setSaveStatus(res.ok ? 'saved' : 'error'); })
+        .catch(() => { setSaveStatus('error'); });
     }
   };
 
@@ -119,7 +123,10 @@ function InnerApp() {
       [newSteps[index], newSteps[newIndex]] = [newSteps[newIndex], newSteps[index]];
       if (currentProject?.id) {
         const ids = newSteps.map(s => s.id);
-        api.reorderSteps(currentProject.id, ids).catch(() => {});
+        setSaveStatus('saving');
+        api.reorderSteps(currentProject.id, ids)
+          .then((res) => { setSaveStatus(res.ok ? 'saved' : 'error'); })
+          .catch(() => { setSaveStatus('error'); });
       }
       return newSteps;
     });
@@ -197,6 +204,7 @@ function InnerApp() {
     setAnnotationStyle,
     setRecordOnClickMode,
     setSteps,
+    setSaveStatus,
   });
 
   const regenerateDescription = async (stepId) => {

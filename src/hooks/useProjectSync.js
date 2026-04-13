@@ -10,6 +10,7 @@ export default function useProjectSync({
   setAnnotationStyle,
   setRecordOnClickMode,
   setSteps,
+  setSaveStatus,
 }) {
   const saveTimeoutRef = useRef(null);
 
@@ -43,12 +44,15 @@ export default function useProjectSync({
   useEffect(() => {
     if (!currentProject?.id) return;
     clearTimeout(saveTimeoutRef.current);
+    if (setSaveStatus) setSaveStatus('saving');
     saveTimeoutRef.current = setTimeout(() => {
       api.updateProject(currentProject.id, {
         title: projectTitle,
         annotation_style: annotationStyle,
         record_on_click_mode: recordOnClickMode,
-      }).catch(() => {});
+      })
+        .then((res) => { if (setSaveStatus) setSaveStatus(res.ok ? 'saved' : 'error'); })
+        .catch(() => { if (setSaveStatus) setSaveStatus('error'); });
     }, 1500);
-  }, [projectTitle, annotationStyle, recordOnClickMode, currentProject?.id]);
+  }, [projectTitle, annotationStyle, recordOnClickMode, currentProject?.id, setSaveStatus]);
 }
