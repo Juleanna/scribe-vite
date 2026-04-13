@@ -10,6 +10,16 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='user',
+            name='is_email_verified',
+            field=models.BooleanField(default=False),
+        ),
+        migrations.AddField(
+            model_name='user',
+            name='email_verification_token',
+            field=models.CharField(blank=True, max_length=64, null=True),
+        ),
+        migrations.AddField(
+            model_name='user',
             name='plan',
             field=models.CharField(
                 choices=[('free', 'Free'), ('pro', 'Pro'), ('team', 'Team')],
