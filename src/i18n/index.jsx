@@ -61,7 +61,9 @@ const messages = {
       title: 'Встановіть розширення для клікового режиму',
       description: 'Кліковий режим потребує браузерного розширення, яке перехоплює кліки на будь-якій сторінці та робить скріншоти автоматично.',
       hint: 'Після встановлення перезавантажте цю сторінку.',
+      close: 'Закрити',
     },
+    theme: { dark: 'Темна тема', light: 'Світла тема' },
   },
   en: {
     app: { defaultTitle: 'New Instruction', language: 'Language' },
@@ -123,7 +125,9 @@ const messages = {
       title: 'Install the extension for click capture mode',
       description: 'Click capture mode requires a browser extension that intercepts clicks on any page and takes screenshots automatically.',
       hint: 'After installation, reload this page.',
+      close: 'Close',
     },
+    theme: { dark: 'Dark mode', light: 'Light mode' },
   },
 };
 
