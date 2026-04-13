@@ -63,17 +63,17 @@ export default function ProjectList({ onSelectProject, onNewProject, onOpenProfi
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 md:mb-8 gap-4">
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 font-bold text-xl">S</span>
-            <h1 className="text-3xl font-bold text-gray-800">{t('projects.title')}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800">{t('projects.title')}</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
             <button
               onClick={handleNew}
-              className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+              className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors font-medium min-h-[44px] w-full sm:w-auto"
             >
               <Plus className="w-5 h-5" />
               {t('projects.new')}
@@ -119,7 +119,7 @@ export default function ProjectList({ onSelectProject, onNewProject, onOpenProfi
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {projects.map((project) => (
               <div
                 key={project.id}

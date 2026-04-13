@@ -17,11 +17,11 @@ export default function StepList({
 
   if (steps.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-        <Camera className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <h2 className="text-2xl font-semibold text-gray-600 mb-2">{t('empty.title')}</h2>
-        <p className="text-gray-500 mb-4">{t('empty.subtitle')}</p>
-        <ul className="text-left max-w-md mx-auto space-y-2 text-gray-600">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 p-12 text-center">
+        <Camera className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+        <h2 className="text-2xl font-semibold text-gray-600 dark:text-gray-300 mb-2">{t('empty.title')}</h2>
+        <p className="text-gray-500 dark:text-gray-400 mb-4">{t('empty.subtitle')}</p>
+        <ul className="text-left max-w-md mx-auto space-y-2 text-gray-600 dark:text-gray-300">
           <li>{t('empty.list1')}</li>
           <li>{t('empty.list2')}</li>
           <li>{t('empty.list3')}</li>
@@ -32,7 +32,7 @@ export default function StepList({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-live="polite">
       {steps.map((step, index) => (
         <StepCard
           key={step.id}

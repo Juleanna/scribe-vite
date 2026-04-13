@@ -47,7 +47,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-4 py-8">
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm max-w-full sm:max-w-sm">
         <div className="text-center mb-5">
           <div className="inline-flex items-center justify-center w-11 h-11 rounded-lg bg-indigo-100 text-indigo-700 font-bold text-xl mb-2">S</div>
           <h1 className="text-xl font-bold text-gray-800">Scribe</h1>

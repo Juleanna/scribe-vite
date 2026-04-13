@@ -57,8 +57,8 @@ export default function Profile({ user, onBack, onUserUpdate }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-6">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-4 md:p-6">
+      <div className="max-w-2xl mx-auto w-full">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <button
@@ -89,7 +89,7 @@ export default function Profile({ user, onBack, onUserUpdate }) {
           </div>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('profile.firstName')}</label>
                 <input

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { I18nProvider } from './i18n';
 import { AuthProvider, useAuth } from './auth';
 import { api } from './api';
@@ -9,422 +9,28 @@ import Login from './components/Login';
 import ProjectList from './components/ProjectList';
 import Profile from './components/Profile';
 import ExtensionBanner from './components/ExtensionBanner';
-import ActionTracker from './actionTracker';
+import ErrorBoundary from './components/ErrorBoundary';
+import useMediaCapture from './hooks/useMediaCapture';
+import useDictation from './hooks/useDictation';
+import useExtension from './hooks/useExtension';
+import useProjectSync from './hooks/useProjectSync';
 
 function InnerApp() {
   const { user, setUser, isAuthenticated, isLoading: authLoading, logout } = useAuth();
 
-  // App-level state: which screen to show
-  const [currentProject, setCurrentProject] = useState(null); // null = project list
+  const [currentProject, setCurrentProject] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [steps, setSteps] = useState([]);
   const [editingStep, setEditingStep] = useState(null);
   const [projectTitle, setProjectTitle] = useState('Нова інструкція');
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingMode, setRecordingMode] = useState('manual');
   const [autoDescribe, setAutoDescribe] = useState(true);
   const [useLocalRecognition, setUseLocalRecognition] = useState(true);
   const [annotationStyle, setAnnotationStyle] = useState('both');
   const [recordOnClickMode, setRecordOnClickMode] = useState(false);
-  const clickRecordRef = useRef(false);
-  const fileInputRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const streamRef = useRef(null);
-  const chunksRef = useRef([]);
-  const previousScreenshotRef = useRef(null);
-  const actionTrackerRef = useRef(null);
-  const objectUrlsRef = useRef([]);
-  const [extCaptureEnabled, setExtCaptureEnabled] = useState(false);
-  const [extInstalled, setExtInstalled] = useState(null); // null = unknown, true/false
-  const [showExtBanner, setShowExtBanner] = useState(false);
-  const recognitionRef = useRef(null);
-  const dictationTargetRef = useRef(null);
-  const dictationTextRef = useRef('');
-  const [isDictating, setIsDictating] = useState(false);
-  const [dictationSupported, setDictationSupported] = useState(false);
 
-  // Debounce ref for saving project updates
   const saveTimeoutRef = useRef(null);
 
-  useEffect(() => {
-    actionTrackerRef.current = new ActionTracker();
-    return () => {
-      if (actionTrackerRef.current) actionTrackerRef.current.stopTracking();
-      objectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
-      objectUrlsRef.current = [];
-    };
-  }, []);
-
-  // Init Web Speech API for dictation
-  useEffect(() => {
-    try {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) { setDictationSupported(false); return; }
-      setDictationSupported(true);
-      const rec = new SR();
-      rec.lang = (navigator.language || 'ru-RU');
-      rec.interimResults = true;
-      rec.continuous = true;
-      rec.onresult = (event) => {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const res = event.results[i];
-          if (res.isFinal) {
-            const piece = (res[0]?.transcript || '').trim();
-            if (piece) {
-              dictationTextRef.current = (dictationTextRef.current + ' ' + piece).trim();
-            }
-          }
-        }
-        if (dictationTargetRef.current) {
-          const targetId = dictationTargetRef.current;
-          const text = dictationTextRef.current;
-          setSteps(prev => prev.map(s => s.id === targetId ? { ...s, description: text } : s));
-        }
-      };
-      rec.onend = () => {
-        setIsDictating(false);
-        dictationTargetRef.current = null;
-      };
-      recognitionRef.current = rec;
-    } catch (_) {}
-  }, []);
-
-  const startDictation = () => {
-    if (!dictationSupported || !recognitionRef.current || isDictating) return;
-    let targetId = editingStep;
-    if (!targetId && steps.length > 0) targetId = steps[steps.length - 1].id;
-    if (!targetId) return;
-    dictationTargetRef.current = targetId;
-    dictationTextRef.current = '';
-    try { recognitionRef.current.start(); setIsDictating(true); } catch (_) {}
-  };
-  const stopDictation = () => {
-    try { recognitionRef.current && recognitionRef.current.stop(); } catch (_) {}
-    setIsDictating(false);
-    dictationTargetRef.current = null;
-    dictationTextRef.current = '';
-  };
-
-  // Extension screenshots via postMessage
-  useEffect(() => {
-    const onMessage = (event) => {
-      const data = event.data;
-      if (!data || data.type !== 'scribe_screenshot' || typeof data.dataUrl !== 'string') return;
-      const meta = data.meta || {};
-      const elementText = formatElementFromMeta(meta.element);
-      const descBase = elementText
-        ? `Клік по ${elementText} на сторінці: ${meta.title || ''}${meta.url ? ` (${meta.url})` : ''}`.trim()
-        : `Клік на сторінці: ${meta.title || ''}${meta.url ? ` (${meta.url})` : ''}`.trim();
-      const description = descBase;
-      overlayClickAnnotate(data.dataUrl, meta).then((annotated) => {
-        previousScreenshotRef.current = annotated;
-        addStep(annotated, 'image', false, description);
-      }).catch(() => {
-        previousScreenshotRef.current = data.dataUrl;
-        addStep(data.dataUrl, 'image', false, description);
-      });
-    };
-    const onState = (event) => {
-      const data = event.data;
-      if (!data || data.type !== 'scribe_capture_state') return;
-      const enabled = !!data.enabled;
-      setExtCaptureEnabled(enabled);
-      if (enabled && recordOnClickMode && !isRecording) {
-        startRecording().then(() => { clickRecordRef.current = true; }).catch(() => {});
-      }
-      if (!enabled && isRecording && clickRecordRef.current) {
-        stopRecording();
-        clickRecordRef.current = false;
-      }
-    };
-    window.addEventListener('message', onMessage);
-    window.addEventListener('message', onState);
-    // Detect extension: send ping, if we get a response within 500ms — installed
-    try { window.postMessage({ type: 'scribe_get_capture_state' }, '*'); } catch(_) {}
-    const detectTimeout = setTimeout(() => {
-      setExtInstalled((prev) => prev === null ? false : prev);
-    }, 800);
-    const onDetect = (event) => {
-      if (event.data?.type === 'scribe_capture_state') {
-        setExtInstalled(true);
-        clearTimeout(detectTimeout);
-      }
-    };
-    window.addEventListener('message', onDetect);
-    return () => {
-      window.removeEventListener('message', onMessage);
-      window.removeEventListener('message', onState);
-      window.removeEventListener('message', onDetect);
-      clearTimeout(detectTimeout);
-    };
-  }, [autoDescribe, useLocalRecognition, annotationStyle, recordOnClickMode, isRecording]);
-
-  const toggleExtensionCapture = () => {
-    if (extInstalled === false) {
-      setShowExtBanner(true);
-      return;
-    }
-    try { window.postMessage({ type: 'scribe_toggle_capture' }, '*'); } catch(_) {}
-  };
-
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      try {
-        const key = (e.key || '').toLowerCase();
-        if (e.altKey && key === 'c') {
-          e.preventDefault();
-          window.postMessage({ type: 'scribe_toggle_capture' }, '*');
-        }
-      } catch (_) {}
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      try {
-        const key = (e.key || '').toLowerCase();
-        if (e.altKey && key === 'r') {
-          e.preventDefault();
-          if (isDictating) stopDictation(); else startDictation();
-        }
-      } catch (_) {}
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isDictating, steps, editingStep]);
-
-  async function overlayClickAnnotate(dataUrl, meta) {
-    const img = new Image();
-    img.src = dataUrl;
-    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    const dpr = meta?.dpr || window.devicePixelRatio || 1;
-    const x = Math.round((meta?.x ?? 0) * dpr);
-    const y = Math.round((meta?.y ?? 0) * dpr);
-    ctx.save();
-    if (meta?.elementRect && annotationStyle !== 'arrow') {
-      const r = meta.elementRect;
-      const left = Math.max(0, Math.round(r.left * dpr));
-      const top = Math.max(0, Math.round(r.top * dpr));
-      const width = Math.round(r.width * dpr);
-      const height = Math.round(r.height * dpr);
-      const pad = Math.round(4 * dpr);
-      ctx.lineWidth = Math.max(3 * dpr, 2);
-      ctx.strokeStyle = 'rgba(59, 130, 246, 0.95)';
-      ctx.fillStyle = 'rgba(59, 130, 246, 0.12)';
-      ctx.beginPath();
-      ctx.rect(left - pad, top - pad, width + pad * 2, height + pad * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.lineWidth = Math.max(4 * dpr, 2);
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.95)';
-    const dx = Math.round(80 * dpr);
-    const dy = Math.round(80 * dpr);
-    let fromX = x - dx;
-    let fromY = y - dy;
-    if (fromX < 10) fromX = 10;
-    if (fromY < 10) fromY = 10;
-    if (annotationStyle !== 'box') {
-      drawArrow(ctx, fromX, fromY, x, y, Math.max(14 * dpr, 10));
-    }
-    ctx.restore();
-    return canvas.toDataURL('image/png');
-  }
-
-  function drawArrow(ctx, fromX, fromY, toX, toY, headLen) {
-    const angle = Math.atan2(toY - fromY, toX - fromX);
-    ctx.beginPath();
-    ctx.moveTo(fromX, fromY);
-    ctx.lineTo(toX, toY);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(toX, toY);
-    ctx.lineTo(toX - headLen * Math.cos(angle - Math.PI / 6), toY - headLen * Math.sin(angle - Math.PI / 6));
-    ctx.moveTo(toX, toY);
-    ctx.lineTo(toX - headLen * Math.cos(angle + Math.PI / 6), toY - headLen * Math.sin(angle + Math.PI / 6));
-    ctx.stroke();
-  }
-
-  function formatElementFromMeta(el) {
-    if (!el || !el.tag) return null;
-    const tag = String(el.tag).toLowerCase();
-    const text = el.text || el.ariaLabel || el.name || el.placeholder || el.alt || '';
-    const label = text ? `"${text}"` : '';
-    if (tag === 'button' || el.role === 'button') return `кнопці ${label}`.trim();
-    if (tag === 'a') return `посиланні ${label}`.trim();
-    if (tag === 'input') {
-      const type = (el.type || 'text').toLowerCase();
-      if (type === 'checkbox') return `прапорцю ${label}`.trim();
-      if (type === 'radio') return `перемикачу ${label}`.trim();
-      if (type === 'submit' || type === 'button') return `кнопці ${label}`.trim();
-      return `полю ${label}`.trim();
-    }
-    if (tag === 'select') return `списку ${label}`.trim();
-    if (tag === 'textarea') return `текстовому полю ${label}`.trim();
-    if (tag === 'img') return `зображенню ${label}`.trim();
-    return `елементу <${tag}> ${label}`.trim();
-  }
-
-  const getLocalDescription = () => {
-    if (!actionTrackerRef.current) return null;
-    const lastAction = actionTrackerRef.current.getLastAction();
-    if (!lastAction) return null;
-    return lastAction.description;
-  };
-
-  const generateDescription = async (imageData, previousImage = null) => {
-    if (!autoDescribe || useLocalRecognition) return null;
-    try {
-      const res = await api.describeImage(imageData, previousImage);
-      if (res.ok) {
-        const data = await res.json();
-        return data.description;
-      }
-      return null;
-    } catch (e) {
-      console.error('Помилка генерації опису:', e);
-      return null;
-    }
-  };
-
-  const captureScreen = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { mediaSource: 'screen' } });
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      await new Promise((res, rej) => { video.onloadedmetadata = res; video.onerror = rej; });
-      await video.play();
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0);
-      stream.getTracks().forEach((t) => t.stop());
-      const imageData = canvas.toDataURL('image/png');
-      let description = 'Знімок екрану';
-      if (autoDescribe) {
-        description = useLocalRecognition ? getLocalDescription() || 'Немає доступного локального опису' : await generateDescription(imageData, previousScreenshotRef.current);
-      }
-      previousScreenshotRef.current = imageData;
-      addStep(imageData, 'image', false, description);
-    } catch (e) {
-      console.error('Помилка при скріншоті:', e);
-      alert('Не вдалося виконати скріншот екрану.');
-    }
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { mediaSource: 'screen' }, audio: true });
-      streamRef.current = stream;
-      chunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
-      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-        const videoUrl = URL.createObjectURL(blob);
-        objectUrlsRef.current.push(videoUrl);
-        addStep(videoUrl, 'video', false, 'Запис екрану завершено', blob);
-        stream.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      };
-      mediaRecorder.start();
-      mediaRecorderRef.current = mediaRecorder;
-      setIsRecording(true);
-      stream.getVideoTracks()[0].onended = () => stopRecording();
-    } catch (e) {
-      console.error('Помилка початку запису:', e);
-      alert('Не вдалося розпочати запис екрана.');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  };
-
-  const startAutoCapture = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { mediaSource: 'screen' }, audio: true });
-      streamRef.current = stream;
-      setIsRecording(true);
-      setRecordingMode('auto');
-      if (useLocalRecognition && actionTrackerRef.current) actionTrackerRef.current.startTracking();
-
-      const chunks = [];
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
-      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        const videoUrl = URL.createObjectURL(blob);
-        objectUrlsRef.current.push(videoUrl);
-        addStep(videoUrl, 'video', true, 'Автозйомка завершена', blob);
-      };
-      mediaRecorder.start();
-      mediaRecorderRef.current = mediaRecorder;
-
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      await video.play();
-
-      const captureInterval = setInterval(async () => {
-        if (!streamRef.current) { clearInterval(captureInterval); return; }
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0);
-        const imageData = canvas.toDataURL('image/png');
-        let description = 'Знімок екрану';
-        if (autoDescribe) {
-          description = useLocalRecognition ? getLocalDescription() || 'Немає доступного локального опису' : await generateDescription(imageData, previousScreenshotRef.current);
-        }
-        previousScreenshotRef.current = imageData;
-        addStep(imageData, 'image', false, description);
-      }, 3000);
-
-      stream.getVideoTracks()[0].onended = () => { clearInterval(captureInterval); stopAutoCapture(); };
-    } catch (e) {
-      console.error('Помилка автозйомки:', e);
-      alert('Не вдалося запустити автозйомку.');
-    }
-  };
-
-  const stopAutoCapture = () => {
-    if (actionTrackerRef.current) actionTrackerRef.current.stopTracking();
-    if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); mediaRecorderRef.current = null; }
-    if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
-    setIsRecording(false);
-    setRecordingMode('manual');
-    previousScreenshotRef.current = null;
-  };
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const imageData = event.target.result;
-        const description = useLocalRecognition ? getLocalDescription() : await generateDescription(imageData);
-        addStep(imageData, 'image', false, description);
-      };
-      reader.readAsDataURL(file);
-    } else if (file.type.startsWith('video/')) {
-      const videoUrl = URL.createObjectURL(file);
-      objectUrlsRef.current.push(videoUrl);
-      addStep(videoUrl, 'video', false, 'Завантажено відео', file);
-    }
-  };
+  // --- Step CRUD (stays in App because of currentProject & api dependency) ---
 
   const addStep = (mediaData, type, insertAtStart = false, customDescription = null, mediaBlob = null) => {
     const tempId = Date.now() + Math.random();
@@ -443,7 +49,6 @@ function InnerApp() {
       return shouldPrepend ? [newStep, ...prev] : [...prev, newStep];
     });
 
-    // Upload to server
     if (currentProject?.id) {
       const order = insertAtStart ? 0 : -1;
       api.createStep(currentProject.id, {
@@ -468,9 +73,10 @@ function InnerApp() {
     const step = steps.find((s) => s.id === stepId);
     if (!step || step.type !== 'image') return;
     setSteps(prev => prev.map((s) => (s.id === stepId ? { ...s, isGenerating: true } : s)));
-    let description = useLocalRecognition ? getLocalDescription() || 'Немає локального опису дій' : await generateDescription(step.media);
+    let description = useLocalRecognition
+      ? mediaCapture.getLocalDescription?.() || 'Немає локального опису дій'
+      : await mediaCapture.generateDescription?.(step.media);
     setSteps(prev => prev.map((s) => (s.id === stepId ? { ...s, description: description || 'Опис недоступний', isGenerating: false } : s)));
-    // Sync to server
     if (currentProject?.id) {
       api.updateStep(currentProject.id, stepId, { description: description || '' }).catch(() => {});
     }
@@ -478,7 +84,6 @@ function InnerApp() {
 
   const updateStep = (id, field, value) => {
     setSteps(prev => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
-    // Debounced sync to server
     if (currentProject?.id) {
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
@@ -501,7 +106,6 @@ function InnerApp() {
       const newSteps = [...prev];
       const newIndex = direction === 'up' ? index - 1 : index + 1;
       [newSteps[index], newSteps[newIndex]] = [newSteps[newIndex], newSteps[index]];
-      // Sync reorder to server
       if (currentProject?.id) {
         const ids = newSteps.map(s => s.id);
         api.reorderSteps(currentProject.id, ids).catch(() => {});
@@ -509,6 +113,43 @@ function InnerApp() {
       return newSteps;
     });
   };
+
+  // --- Custom Hooks ---
+
+  const mediaCapture = useMediaCapture({
+    autoDescribe,
+    useLocalRecognition,
+    annotationStyle,
+    addStep,
+    isAuthenticated,
+  });
+
+  const dictation = useDictation({ steps, editingStep, setSteps });
+
+  const extension = useExtension({
+    addStep,
+    annotationStyle,
+    recordOnClickMode,
+    isRecording: mediaCapture.isRecording,
+    startRecording: mediaCapture.startRecording,
+    stopRecording: mediaCapture.stopRecording,
+    overlayClickAnnotate: mediaCapture.overlayClickAnnotate,
+    previousScreenshotRef: mediaCapture.previousScreenshotRef,
+    formatElementFromMeta: mediaCapture.formatElementFromMeta,
+  });
+
+  useProjectSync({
+    currentProject,
+    projectTitle,
+    annotationStyle,
+    recordOnClickMode,
+    setProjectTitle,
+    setAnnotationStyle,
+    setRecordOnClickMode,
+    setSteps,
+  });
+
+  // --- Export functions ---
 
   const escapeHTML = (str) => String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -556,52 +197,14 @@ function InnerApp() {
     printWindow.document.close();
   };
 
-  // Load project from API when selected
-  useEffect(() => {
-    if (!currentProject?.id) return;
-    (async () => {
-      try {
-        const res = await api.getProject(currentProject.id);
-        if (res.ok) {
-          const project = await res.json();
-          setProjectTitle(project.title);
-          setAnnotationStyle(project.annotation_style || 'both');
-          setRecordOnClickMode(project.record_on_click_mode || false);
-          setSteps((project.steps || []).map(s => ({
-            id: s.id,
-            media: s.media_url || '',
-            type: s.media_type,
-            title: s.title,
-            description: s.description,
-            isGenerating: false,
-          })));
-        }
-      } catch (e) {
-        console.error('Failed to load project from API:', e);
-      }
-    })();
-  }, [currentProject?.id]);
-
-  // Save project title/settings to server (debounced)
-  useEffect(() => {
-    if (!currentProject?.id) return;
-    clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      api.updateProject(currentProject.id, {
-        title: projectTitle,
-        annotation_style: annotationStyle,
-        record_on_click_mode: recordOnClickMode,
-      }).catch(() => {});
-    }, 1500);
-  }, [projectTitle, annotationStyle, recordOnClickMode, currentProject?.id]);
-
   const handleBackToProjects = () => {
     setCurrentProject(null);
     setSteps([]);
     setProjectTitle('Нова інструкція');
   };
 
-  // Loading state
+  // --- Render ---
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center">
@@ -610,12 +213,8 @@ function InnerApp() {
     );
   }
 
-  // Not authenticated — show login
-  if (!isAuthenticated) {
-    return <Login />;
-  }
+  if (!isAuthenticated) return <Login />;
 
-  // Profile screen
   if (showProfile) {
     return (
       <Profile
@@ -626,7 +225,6 @@ function InnerApp() {
     );
   }
 
-  // Authenticated but no project selected — show project list
   if (!currentProject) {
     return (
       <ProjectList
@@ -639,7 +237,6 @@ function InnerApp() {
     );
   }
 
-  // Project editor
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-6">
       <div className="max-w-6xl mx-auto">
@@ -650,14 +247,14 @@ function InnerApp() {
           exportToHTML={exportToHTML}
           exportToPDF={exportToPDF}
           exportToMarkdown={exportToMarkdown}
-          extCaptureEnabled={extCaptureEnabled}
-          onToggleExtensionCapture={toggleExtensionCapture}
+          extCaptureEnabled={extension.extCaptureEnabled}
+          onToggleExtensionCapture={extension.toggleExtensionCapture}
           onBackToProjects={handleBackToProjects}
           user={user}
           onLogout={logout}
           onOpenProfile={() => setShowProfile(true)}
         />
-        {showExtBanner && <ExtensionBanner onClose={() => setShowExtBanner(false)} />}
+        {extension.showExtBanner && <ExtensionBanner onClose={() => extension.setShowExtBanner(false)} />}
         <Controls
           autoDescribe={autoDescribe}
           setAutoDescribe={setAutoDescribe}
@@ -667,18 +264,18 @@ function InnerApp() {
           setAnnotationStyle={setAnnotationStyle}
           recordOnClickMode={recordOnClickMode}
           setRecordOnClickMode={setRecordOnClickMode}
-          isDictating={isDictating}
-          dictationSupported={dictationSupported}
-          onToggleDictation={() => (isDictating ? stopDictation() : startDictation())}
-          isRecording={isRecording}
-          recordingMode={recordingMode}
-          onCaptureScreen={captureScreen}
-          onStartAutoCapture={startAutoCapture}
-          onStartRecording={startRecording}
-          onStopAutoCapture={stopAutoCapture}
-          onStopRecording={stopRecording}
-          onFileUpload={handleFileUpload}
-          fileInputRef={fileInputRef}
+          isDictating={dictation.isDictating}
+          dictationSupported={dictation.dictationSupported}
+          onToggleDictation={() => (dictation.isDictating ? dictation.stopDictation() : dictation.startDictation())}
+          isRecording={mediaCapture.isRecording}
+          recordingMode={mediaCapture.recordingMode}
+          onCaptureScreen={mediaCapture.captureScreen}
+          onStartAutoCapture={mediaCapture.startAutoCapture}
+          onStartRecording={mediaCapture.startRecording}
+          onStopAutoCapture={mediaCapture.stopAutoCapture}
+          onStopRecording={mediaCapture.stopRecording}
+          onFileUpload={mediaCapture.handleFileUpload}
+          fileInputRef={mediaCapture.fileInputRef}
         />
         <StepList
           steps={steps}
@@ -700,7 +297,9 @@ export default function App() {
   return (
     <I18nProvider>
       <AuthProvider>
-        <InnerApp />
+        <ErrorBoundary>
+          <InnerApp />
+        </ErrorBoundary>
       </AuthProvider>
     </I18nProvider>
   );
