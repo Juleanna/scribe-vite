@@ -10,5 +10,5 @@ urlpatterns = [
     path('api/v1/ai/', include('ai_proxy.urls')),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Always serve media in development; in production Nginx handles /media/
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

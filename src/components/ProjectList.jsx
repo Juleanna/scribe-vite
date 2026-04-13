@@ -2,11 +2,15 @@ import { useEffect, useState } from 'react';
 import { Plus, Trash2, Clock, Layers, LogOut, User, Copy, Share2 } from 'lucide-react';
 import { api } from '../api';
 import { useI18n } from '../i18n';
+import Modal from './Modal';
+import Toast from './Toast';
 
 export default function ProjectList({ onSelectProject, onNewProject, onOpenProfile, user, onLogout }) {
   const { t } = useI18n();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -27,13 +31,18 @@ export default function ProjectList({ onSelectProject, onNewProject, onOpenProfi
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();
-    if (!confirm(t('projects.confirmDelete'))) return;
+    setDeleteTarget(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await api.deleteProject(id);
-      setProjects((prev) => prev.filter((p) => p.id !== id));
+      await api.deleteProject(deleteTarget);
+      setProjects((prev) => prev.filter((p) => p.id !== deleteTarget));
     } catch (e) {
       console.error('Failed to delete project:', e);
     }
+    setDeleteTarget(null);
   };
 
   const handleDuplicate = async (e, id) => {
@@ -55,7 +64,7 @@ export default function ProjectList({ onSelectProject, onNewProject, onOpenProfi
       if (res.ok) {
         const data = await res.json();
         await navigator.clipboard.writeText(data.share_url);
-        alert(t('share.copied'));
+        setToast(t('share.copied'));
       }
     } catch (e) {
       console.error('Failed to share project:', e);
@@ -216,6 +225,18 @@ export default function ProjectList({ onSelectProject, onNewProject, onOpenProfi
           </div>
         )}
       </div>
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        variant="confirm"
+        title={t('projects.delete')}
+        message={t('projects.confirmDelete')}
+        confirmText={t('projects.delete')}
+      />
+
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
   );
 }
