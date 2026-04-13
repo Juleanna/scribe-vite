@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Clock, Layers, LogOut, User } from 'lucide-react';
+import { Plus, Trash2, Clock, Layers, LogOut, User, Copy, Share2 } from 'lucide-react';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 
@@ -33,6 +33,32 @@ export default function ProjectList({ onSelectProject, onNewProject, onOpenProfi
       setProjects((prev) => prev.filter((p) => p.id !== id));
     } catch (e) {
       console.error('Failed to delete project:', e);
+    }
+  };
+
+  const handleDuplicate = async (e, id) => {
+    e.stopPropagation();
+    try {
+      const res = await api.duplicateProject(id);
+      if (res.ok) {
+        await fetchProjects();
+      }
+    } catch (e) {
+      console.error('Failed to duplicate project:', e);
+    }
+  };
+
+  const handleShare = async (e, id) => {
+    e.stopPropagation();
+    try {
+      const res = await api.shareProject(id);
+      if (res.ok) {
+        const data = await res.json();
+        await navigator.clipboard.writeText(data.share_url);
+        alert(t('share.copied'));
+      }
+    } catch (e) {
+      console.error('Failed to share project:', e);
     }
   };
 
@@ -146,14 +172,32 @@ export default function ProjectList({ onSelectProject, onNewProject, onOpenProfi
                     <h3 className="font-semibold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
                       {project.title}
                     </h3>
-                    <button
-                      onClick={(e) => handleDelete(e, project.id)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-                      title={t('projects.delete')}
-                      aria-label={t('projects.delete')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => handleDuplicate(e, project.id)}
+                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-md transition-colors"
+                        title={t('templates.duplicate')}
+                        aria-label={t('templates.duplicate')}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => handleShare(e, project.id)}
+                        className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-md transition-colors"
+                        title={t('share.share')}
+                        aria-label={t('share.share')}
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => handleDelete(e, project.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
+                        title={t('projects.delete')}
+                        aria-label={t('projects.delete')}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-4 mt-3 text-sm text-gray-500 dark:text-gray-400">

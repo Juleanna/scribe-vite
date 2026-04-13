@@ -1,15 +1,17 @@
 import base64
+import secrets
 import uuid
 
+from django.conf import settings as django_settings
 from django.db.models import Count
 from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, status
+from rest_framework import viewsets, generics, status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
-from .models import Project, Step
+from .models import Project, Step, StepVersion
 from .serializers import (
     ProjectListSerializer,
     ProjectDetailSerializer,
@@ -68,6 +70,44 @@ class ProjectViewSet(viewsets.ModelViewSet):
             if step.media_file:
                 step.media_file.delete(save=False)
         instance.delete()
+
+    @action(detail=True, methods=['post'])
+    def duplicate(self, request, pk=None):
+        """POST /projects/<id>/duplicate/ — створити копію проекту."""
+        original = self.get_object()
+        new_project = Project.objects.create(
+            owner=request.user,
+            title=f"{original.title} (копія)",
+            annotation_style=original.annotation_style,
+            record_on_click_mode=original.record_on_click_mode,
+        )
+        for step in original.steps.order_by('order'):
+            new_step = Step.objects.create(
+                project=new_project,
+                order=step.order,
+                media_type=step.media_type,
+                title=step.title,
+                description=step.description,
+            )
+            if step.media_file:
+                new_step.media_file.save(
+                    step.media_file.name.split('/')[-1],
+                    ContentFile(step.media_file.read()),
+                    save=True,
+                )
+        serializer = ProjectDetailSerializer(new_project, context={'request': request})
+        new_project.step_count = new_project.steps.count()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def share(self, request, pk=None):
+        project = self.get_object()
+        if not project.share_token:
+            project.share_token = secrets.token_urlsafe(32)
+            project.is_public = True
+            project.save(update_fields=['share_token', 'is_public'])
+        url = f"{django_settings.FRONTEND_URL}/shared/{project.share_token}"
+        return Response({'share_url': url, 'share_token': project.share_token})
 
 
 class StepViewSet(viewsets.ModelViewSet):
@@ -137,10 +177,27 @@ class StepViewSet(viewsets.ModelViewSet):
         output_serializer = StepSerializer(step, context={'request': request})
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        # Save current state as a version before updating
+        StepVersion.objects.create(
+            step=instance,
+            title=instance.title,
+            description=instance.description,
+        )
+        serializer.save()
+
     def perform_destroy(self, instance):
         if instance.media_file:
             instance.media_file.delete(save=False)
         instance.delete()
+
+    @action(detail=True, methods=['get'])
+    def versions(self, request, project_id=None, pk=None):
+        step = self.get_object()
+        versions = step.versions.all()[:20]
+        data = [{'id': v.id, 'title': v.title, 'description': v.description, 'created_at': v.created_at} for v in versions]
+        return Response(data)
 
     @action(detail=False, methods=['post'])
     def reorder(self, request, *args, **kwargs):
@@ -169,3 +226,11 @@ class StepViewSet(viewsets.ModelViewSet):
             updated_steps, many=True, context={'request': request},
         )
         return Response(output_serializer.data)
+
+
+class SharedProjectView(generics.RetrieveAPIView):
+    permission_classes = (AllowAny,)
+    serializer_class = ProjectDetailSerializer
+
+    def get_object(self):
+        return get_object_or_404(Project, share_token=self.kwargs['token'], is_public=True)

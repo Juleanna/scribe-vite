@@ -133,6 +133,18 @@ class ApiClient {
     return this.request(`/projects/${id}/`, { method: 'DELETE' });
   }
 
+  async duplicateProject(id) {
+    return this.request(`/projects/${id}/duplicate/`, { method: 'POST' });
+  }
+
+  async shareProject(id) {
+    return this.request(`/projects/${id}/share/`, { method: 'POST' });
+  }
+
+  async getSharedProject(token) {
+    return fetch(`${API_BASE}/shared/${token}/`).then(r => r.json());
+  }
+
   // Steps
   async createStep(projectId, { mediaBase64, mediaBlob, mediaType, title, description, order }) {
     if (mediaType === 'video' && mediaBlob) {

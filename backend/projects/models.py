@@ -31,6 +31,9 @@ class Project(models.Model):
         choices=ANNOTATION_STYLE_CHOICES,
     )
     record_on_click_mode = models.BooleanField(default=False)
+    is_template = models.BooleanField(default=False)
+    share_token = models.CharField(max_length=64, blank=True, null=True, unique=True)
+    is_public = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -66,3 +69,14 @@ class Step(models.Model):
 
     def __str__(self):
         return f'Step {self.order}: {self.title}'
+
+
+class StepVersion(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    step = models.ForeignKey(Step, on_delete=models.CASCADE, related_name='versions')
+    title = models.CharField(max_length=500, default='')
+    description = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']

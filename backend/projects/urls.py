@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import ProjectViewSet, StepViewSet
+from .views import ProjectViewSet, StepViewSet, SharedProjectView
 
 router = DefaultRouter()
 router.register('projects', ProjectViewSet, basename='project')
@@ -27,5 +27,15 @@ urlpatterns = [
             'delete': 'destroy',
         }),
         name='project-steps-detail',
+    ),
+    path(
+        'projects/<uuid:project_id>/steps/<uuid:pk>/versions/',
+        StepViewSet.as_view({'get': 'versions'}),
+        name='project-steps-versions',
+    ),
+    path(
+        'shared/<str:token>/',
+        SharedProjectView.as_view(),
+        name='shared-project',
     ),
 ] + router.urls

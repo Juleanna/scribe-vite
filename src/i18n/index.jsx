@@ -63,6 +63,9 @@ const messages = {
       hint: 'Після встановлення перезавантажте цю сторінку.',
       close: 'Закрити',
     },
+    templates: { duplicate: 'Дублювати', duplicated: 'Дубльовано!' },
+    share: { share: 'Поділитись', copied: 'Посилання скопійовано!' },
+    versions: { title: 'Історія змін', restore: 'Відновити' },
     theme: { dark: 'Темна тема', light: 'Світла тема' },
   },
   en: {
@@ -127,6 +130,9 @@ const messages = {
       hint: 'After installation, reload this page.',
       close: 'Close',
     },
+    templates: { duplicate: 'Duplicate', duplicated: 'Duplicated!' },
+    share: { share: 'Share', copied: 'Link copied!' },
+    versions: { title: 'Version history', restore: 'Restore' },
     theme: { dark: 'Dark mode', light: 'Light mode' },
   },
 };
