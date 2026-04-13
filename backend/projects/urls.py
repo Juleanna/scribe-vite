@@ -1,10 +1,12 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import ProjectViewSet, StepViewSet, SharedProjectView
+from .views import ProjectViewSet, StepViewSet, SharedProjectView, TagViewSet, WebhookViewSet
 
 router = DefaultRouter()
 router.register('projects', ProjectViewSet, basename='project')
+router.register('tags', TagViewSet, basename='tag')
+router.register('webhooks', WebhookViewSet, basename='webhook')
 
 urlpatterns = [
     # Nested step endpoints under projects

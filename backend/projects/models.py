@@ -1,3 +1,4 @@
+import secrets
 import uuid
 
 from django.conf import settings
@@ -9,6 +10,19 @@ def media_upload_path(instance, filename):
     folder = 'screenshots' if instance.media_type == 'image' else 'videos'
     ext = filename.rsplit('.', 1)[-1] if '.' in filename else ('png' if instance.media_type == 'image' else 'webm')
     return f'{folder}/{instance.project_id}/{instance.id}.{ext}'
+
+
+class Tag(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=50)
+    color = models.CharField(max_length=7, default='#6366f1')
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tags')
+
+    class Meta:
+        unique_together = ['name', 'owner']
+
+    def __str__(self):
+        return self.name
 
 
 class Project(models.Model):
@@ -34,6 +48,7 @@ class Project(models.Model):
     is_template = models.BooleanField(default=False)
     share_token = models.CharField(max_length=64, blank=True, null=True, unique=True)
     is_public = models.BooleanField(default=False)
+    tags = models.ManyToManyField('Tag', blank=True, related_name='projects')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -80,3 +95,21 @@ class StepVersion(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class Webhook(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='webhooks')
+    url = models.URLField()
+    events = models.JSONField(default=list)  # ['project.created', 'project.updated', 'step.created']
+    is_active = models.BooleanField(default=True)
+    secret = models.CharField(max_length=64, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.secret:
+            self.secret = secrets.token_urlsafe(32)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'Webhook {self.url}'

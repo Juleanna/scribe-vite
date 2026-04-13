@@ -11,7 +11,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
-from .models import Project, Step, StepVersion
+from .models import Project, Step, StepVersion, Tag, Webhook
 from .serializers import (
     ProjectListSerializer,
     ProjectDetailSerializer,
@@ -20,14 +20,28 @@ from .serializers import (
     StepCreateSerializer,
     StepUpdateSerializer,
     ReorderSerializer,
+    TagSerializer,
+    WebhookSerializer,
 )
+
+
+def get_project_limit(user):
+    limits = {'free': 5, 'pro': 100, 'team': 1000}
+    return limits.get(user.plan, 5)
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Project.objects.filter(owner=self.request.user)
+        qs = Project.objects.filter(owner=self.request.user)
+        search = self.request.query_params.get('search')
+        tag = self.request.query_params.get('tag')
+        if search:
+            qs = qs.filter(title__icontains=search)
+        if tag:
+            qs = qs.filter(tags__id=tag)
+        return qs
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -57,12 +71,24 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         project_count = Project.objects.filter(owner=self.request.user).count()
-        if project_count >= 100:
+        limit = get_project_limit(self.request.user)
+        if project_count >= limit:
             from rest_framework.exceptions import Throttled
             raise Throttled(
-                detail='Project limit reached. You cannot have more than 100 projects.',
+                detail=f'Project limit reached. You cannot have more than {limit} projects.',
             )
-        serializer.save(owner=self.request.user)
+        tag_ids = serializer.validated_data.pop('tag_ids', None)
+        project = serializer.save(owner=self.request.user)
+        if tag_ids:
+            tags = Tag.objects.filter(id__in=tag_ids, owner=self.request.user)
+            project.tags.set(tags)
+
+    def perform_update(self, serializer):
+        tag_ids = serializer.validated_data.pop('tag_ids', None)
+        project = serializer.save()
+        if tag_ids is not None:
+            tags = Tag.objects.filter(id__in=tag_ids, owner=self.request.user)
+            project.tags.set(tags)
 
     def perform_destroy(self, instance):
         # Delete media files from disk for all steps
@@ -98,6 +124,19 @@ class ProjectViewSet(viewsets.ModelViewSet):
         serializer = ProjectDetailSerializer(new_project, context={'request': request})
         new_project.step_count = new_project.steps.count()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'], url_path='bulk_delete')
+    def bulk_delete(self, request):
+        ids = request.data.get('ids', [])
+        if not ids:
+            return Response({'detail': 'No ids provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        projects = Project.objects.filter(id__in=ids, owner=request.user)
+        for project in projects:
+            for step in project.steps.all():
+                if step.media_file:
+                    step.media_file.delete(save=False)
+            project.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['post'])
     def share(self, request, pk=None):
@@ -226,6 +265,29 @@ class StepViewSet(viewsets.ModelViewSet):
             updated_steps, many=True, context={'request': request},
         )
         return Response(output_serializer.data)
+
+
+class TagViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TagSerializer
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
+
+    def get_queryset(self):
+        return Tag.objects.filter(owner=self.request.user).order_by('name')
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+
+class WebhookViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = WebhookSerializer
+
+    def get_queryset(self):
+        return Webhook.objects.filter(owner=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 
 class SharedProjectView(generics.RetrieveAPIView):

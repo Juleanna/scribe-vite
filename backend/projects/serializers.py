@@ -1,12 +1,18 @@
 from rest_framework import serializers
 
-from .models import Project, Step
+from .models import Project, Step, Tag, Webhook
 
 # File size limits
 MAX_IMAGE_SIZE = 10 * 1024 * 1024       # 10 MB
 MAX_VIDEO_SIZE = 200 * 1024 * 1024      # 200 MB
 MAX_IMAGE_BASE64_LEN = 14 * 1024 * 1024  # ~10 MB decoded (with base64 overhead)
 MAX_VIDEO_BASE64_LEN = 267 * 1024 * 1024  # ~200 MB decoded (with base64 overhead)
+
+
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ['id', 'name', 'color']
 
 
 class StepSerializer(serializers.ModelSerializer):
@@ -103,12 +109,13 @@ class ThumbnailMixin:
 class ProjectListSerializer(ThumbnailMixin, serializers.ModelSerializer):
     step_count = serializers.IntegerField(read_only=True)
     thumbnail_url = serializers.SerializerMethodField()
+    tags = TagSerializer(many=True, read_only=True)
 
     class Meta:
         model = Project
         fields = [
             'id', 'title', 'annotation_style', 'record_on_click_mode',
-            'step_count', 'thumbnail_url', 'created_at', 'updated_at',
+            'step_count', 'thumbnail_url', 'tags', 'created_at', 'updated_at',
         ]
 
 
@@ -116,20 +123,23 @@ class ProjectDetailSerializer(ThumbnailMixin, serializers.ModelSerializer):
     step_count = serializers.IntegerField(read_only=True)
     thumbnail_url = serializers.SerializerMethodField()
     steps = StepSerializer(many=True, read_only=True)
+    tags = TagSerializer(many=True, read_only=True)
 
     class Meta:
         model = Project
         fields = [
             'id', 'title', 'annotation_style', 'record_on_click_mode',
-            'step_count', 'thumbnail_url', 'steps',
+            'step_count', 'thumbnail_url', 'tags', 'steps',
             'created_at', 'updated_at',
         ]
 
 
 class ProjectCreateUpdateSerializer(serializers.ModelSerializer):
+    tag_ids = serializers.ListField(child=serializers.UUIDField(), required=False, write_only=True)
+
     class Meta:
         model = Project
-        fields = ['id', 'title', 'annotation_style', 'record_on_click_mode']
+        fields = ['id', 'title', 'annotation_style', 'record_on_click_mode', 'tag_ids']
         read_only_fields = ['id']
 
 
@@ -138,3 +148,10 @@ class ReorderSerializer(serializers.Serializer):
         child=serializers.UUIDField(),
         allow_empty=False,
     )
+
+
+class WebhookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Webhook
+        fields = ['id', 'url', 'events', 'is_active', 'secret', 'created_at']
+        read_only_fields = ['id', 'secret', 'created_at']

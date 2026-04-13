@@ -20,6 +20,7 @@ const messages = {
       list3: '• Виберіть «Запис відео», щоб записати екран.', list4: '• Увімкніть локальний опис — без AI'
     },
     step: { step: 'Крок', titlePlaceholder: 'Назва кроку', descPlaceholder: 'Опис кроку...', videoBadge: 'Відео', edit: 'Редагувати', save: 'Зберегти', moveUp: 'Перемістити вгору', moveDown: 'Перемістити вниз', delete: 'Видалити' },
+    undo: { undo: 'Скасувати', redo: 'Повторити' },
     auth: {
       subtitle: 'Створюйте покрокові інструкції',
       password: 'Пароль',
@@ -63,9 +64,15 @@ const messages = {
       hint: 'Після встановлення перезавантажте цю сторінку.',
       close: 'Закрити',
     },
+    editor: { crop: 'Обрізати', text: 'Текст', blur: 'Розмити', arrow: 'Стрілка', undo: 'Скасувати', save: 'Зберегти', close: 'Закрити', editImage: 'Редагувати зображення', enterText: 'Введіть текст:' },
     templates: { duplicate: 'Дублювати', duplicated: 'Дубльовано!' },
     share: { share: 'Поділитись', copied: 'Посилання скопійовано!' },
     versions: { title: 'Історія змін', restore: 'Відновити' },
+    save: { saved: 'Збережено', saving: 'Зберігається...', error: 'Помилка збереження' },
+    shared: { title: 'Інструкція', createdWith: 'Створено за допомогою', createOwn: 'Створити свою інструкцію' },
+    search: { placeholder: 'Пошук інструкцій...', noResults: 'Нічого не знайдено' },
+    tags: { title: 'Теги', add: 'Додати тег', name: 'Назва тегу', color: 'Колір' },
+    bulk: { selected: 'Вибрано', deleteSelected: 'Видалити вибрані', selectAll: 'Вибрати всі', deselectAll: 'Зняти вибір' },
     theme: { dark: 'Темна тема', light: 'Світла тема' },
   },
   en: {
@@ -87,6 +94,7 @@ const messages = {
       list3: '• Use "Record" — capture video', list4: '• Enable local auto-describe — no AI'
     },
     step: { step: 'Step', titlePlaceholder: 'Step title', descPlaceholder: 'Step description...', videoBadge: 'Video', edit: 'Edit', save: 'Save', moveUp: 'Move up', moveDown: 'Move down', delete: 'Delete' },
+    undo: { undo: 'Undo', redo: 'Redo' },
     auth: {
       subtitle: 'Create step-by-step instructions',
       password: 'Password',
@@ -130,9 +138,15 @@ const messages = {
       hint: 'After installation, reload this page.',
       close: 'Close',
     },
+    editor: { crop: 'Crop', text: 'Text', blur: 'Blur', arrow: 'Arrow', undo: 'Undo', save: 'Save', close: 'Close', editImage: 'Edit image', enterText: 'Enter text:' },
     templates: { duplicate: 'Duplicate', duplicated: 'Duplicated!' },
     share: { share: 'Share', copied: 'Link copied!' },
     versions: { title: 'Version history', restore: 'Restore' },
+    save: { saved: 'Saved', saving: 'Saving...', error: 'Save error' },
+    shared: { title: 'Instruction', createdWith: 'Created with', createOwn: 'Create your own instruction' },
+    search: { placeholder: 'Search instructions...', noResults: 'Nothing found' },
+    tags: { title: 'Tags', add: 'Add tag', name: 'Tag name', color: 'Color' },
+    bulk: { selected: 'Selected', deleteSelected: 'Delete selected', selectAll: 'Select all', deselectAll: 'Deselect all' },
     theme: { dark: 'Dark mode', light: 'Light mode' },
   },
 };

@@ -107,9 +107,18 @@ class ApiClient {
   }
 
   // Projects
-  async listProjects() {
-    return this.request('/projects/');
+  async listProjects(params = {}) {
+    const query = new URLSearchParams();
+    if (params.search) query.set('search', params.search);
+    if (params.tag) query.set('tag', params.tag);
+    const qs = query.toString();
+    return this.request(`/projects/${qs ? '?' + qs : ''}`);
   }
+
+  async listTags() { return this.request('/tags/'); }
+  async createTag(data) { return this.request('/tags/', { method: 'POST', body: JSON.stringify(data) }); }
+  async deleteTag(id) { return this.request(`/tags/${id}/`, { method: 'DELETE' }); }
+  async bulkDeleteProjects(ids) { return this.request('/projects/bulk_delete/', { method: 'POST', body: JSON.stringify({ ids }) }); }
 
   async createProject(data) {
     return this.request('/projects/', {
@@ -179,6 +188,11 @@ class ApiClient {
       body: JSON.stringify({ step_ids: stepIds }),
     });
   }
+
+  // Webhooks
+  async listWebhooks() { return this.request('/webhooks/'); }
+  async createWebhook(data) { return this.request('/webhooks/', { method: 'POST', body: JSON.stringify(data) }); }
+  async deleteWebhook(id) { return this.request(`/webhooks/${id}/`, { method: 'DELETE' }); }
 
   // AI
   async describeImage(imageBase64, previousImageBase64) {
