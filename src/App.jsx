@@ -12,6 +12,7 @@ import useMediaCapture from './hooks/useMediaCapture';
 import useDictation from './hooks/useDictation';
 import useExtension from './hooks/useExtension';
 import useProjectSync from './hooks/useProjectSync';
+import { useDarkMode } from './hooks/useDarkMode';
 
 const Login = lazy(() => import('./components/Login'));
 const ProjectList = lazy(() => import('./components/ProjectList'));
@@ -28,6 +29,7 @@ function LoadingSpinner() {
 
 function InnerApp() {
   const { user, setUser, isAuthenticated, isLoading: authLoading, logout } = useAuth();
+  const [dark, setDark] = useDarkMode();
 
   // Check for shared project URL
   const [sharedToken] = useState(() => {
@@ -374,6 +376,8 @@ function InnerApp() {
           user={user}
           onLogout={logout}
           onOpenProfile={() => setShowProfile(true)}
+          dark={dark}
+          setDark={setDark}
           onUndo={undoRedo.undo}
           onRedo={undoRedo.redo}
           canUndo={undoRedo.canUndo}
