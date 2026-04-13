@@ -8,6 +8,7 @@ import StepList from './components/StepList';
 import Login from './components/Login';
 import ProjectList from './components/ProjectList';
 import Profile from './components/Profile';
+import ExtensionBanner from './components/ExtensionBanner';
 import ActionTracker from './actionTracker';
 
 function InnerApp() {
@@ -34,6 +35,8 @@ function InnerApp() {
   const actionTrackerRef = useRef(null);
   const objectUrlsRef = useRef([]);
   const [extCaptureEnabled, setExtCaptureEnabled] = useState(false);
+  const [extInstalled, setExtInstalled] = useState(null); // null = unknown, true/false
+  const [showExtBanner, setShowExtBanner] = useState(false);
   const recognitionRef = useRef(null);
   const dictationTargetRef = useRef(null);
   const dictationTextRef = useRef('');
@@ -136,14 +139,31 @@ function InnerApp() {
     };
     window.addEventListener('message', onMessage);
     window.addEventListener('message', onState);
+    // Detect extension: send ping, if we get a response within 500ms — installed
     try { window.postMessage({ type: 'scribe_get_capture_state' }, '*'); } catch(_) {}
+    const detectTimeout = setTimeout(() => {
+      setExtInstalled((prev) => prev === null ? false : prev);
+    }, 800);
+    const onDetect = (event) => {
+      if (event.data?.type === 'scribe_capture_state') {
+        setExtInstalled(true);
+        clearTimeout(detectTimeout);
+      }
+    };
+    window.addEventListener('message', onDetect);
     return () => {
       window.removeEventListener('message', onMessage);
       window.removeEventListener('message', onState);
+      window.removeEventListener('message', onDetect);
+      clearTimeout(detectTimeout);
     };
   }, [autoDescribe, useLocalRecognition, annotationStyle, recordOnClickMode, isRecording]);
 
   const toggleExtensionCapture = () => {
+    if (extInstalled === false) {
+      setShowExtBanner(true);
+      return;
+    }
     try { window.postMessage({ type: 'scribe_toggle_capture' }, '*'); } catch(_) {}
   };
 
@@ -637,6 +657,7 @@ function InnerApp() {
           onLogout={logout}
           onOpenProfile={() => setShowProfile(true)}
         />
+        {showExtBanner && <ExtensionBanner onClose={() => setShowExtBanner(false)} />}
         <Controls
           autoDescribe={autoDescribe}
           setAutoDescribe={setAutoDescribe}

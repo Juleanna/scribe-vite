@@ -57,6 +57,11 @@ const messages = {
       pwError: 'Невірний пароль',
       pwChanged: 'Пароль успішно змінено',
     },
+    ext: {
+      title: 'Встановіть розширення для клікового режиму',
+      description: 'Кліковий режим потребує браузерного розширення, яке перехоплює кліки на будь-якій сторінці та робить скріншоти автоматично.',
+      hint: 'Після встановлення перезавантажте цю сторінку.',
+    },
   },
   en: {
     app: { defaultTitle: 'New Instruction', language: 'Language' },
@@ -113,6 +118,11 @@ const messages = {
       newPassword: 'New password',
       pwError: 'Wrong password',
       pwChanged: 'Password changed successfully',
+    },
+    ext: {
+      title: 'Install the extension for click capture mode',
+      description: 'Click capture mode requires a browser extension that intercepts clicks on any page and takes screenshots automatically.',
+      hint: 'After installation, reload this page.',
     },
   },
 };
