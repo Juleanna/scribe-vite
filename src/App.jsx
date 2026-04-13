@@ -31,12 +31,36 @@ function InnerApp() {
   const { user, setUser, isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const [dark, setDark] = useDarkMode();
 
-  // Check for shared project URL
+  // Check for special URLs
   const [sharedToken] = useState(() => {
     const path = window.location.pathname;
     if (path.startsWith('/shared/')) return path.replace('/shared/', '');
     return null;
   });
+
+  // Handle email verification & password reset from URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const verifyToken = params.get('verify_token');
+    const resetToken = params.get('reset_token');
+    if (verifyToken) {
+      fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/auth/verify-email/?token=${verifyToken}`)
+        .then(r => r.json())
+        .then(() => { window.history.replaceState({}, '', '/'); })
+        .catch(() => {});
+    }
+    if (resetToken) {
+      const newPw = prompt('Введіть новий пароль (мін. 8 символів):');
+      if (newPw && newPw.length >= 8) {
+        fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/auth/reset-password/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: resetToken, new_password: newPw }),
+        }).then(() => { window.history.replaceState({}, '', '/'); alert('Пароль змінено!'); })
+          .catch(() => {});
+      }
+    }
+  }, []);
 
   const [currentProject, setCurrentProject] = useState(null);
   const [showProfile, setShowProfile] = useState(false);

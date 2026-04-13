@@ -27,6 +27,9 @@ export default function ProjectList({ onSelectProject, onNewProject, onOpenProfi
   const [selectedTag, setSelectedTag] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [showNewTag, setShowNewTag] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#6366f1');
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
@@ -65,6 +68,31 @@ export default function ProjectList({ onSelectProject, onNewProject, onOpenProfi
     if (selectedTag) params.tag = selectedTag;
     fetchProjects(params);
   }, [debouncedSearch, selectedTag, fetchProjects]);
+
+  const handleCreateTag = async () => {
+    if (!newTagName.trim()) return;
+    try {
+      const res = await api.createTag({ name: newTagName.trim(), color: newTagColor });
+      if (res.ok) {
+        setNewTagName('');
+        setShowNewTag(false);
+        fetchTags();
+      }
+    } catch (e) {
+      console.error('Failed to create tag:', e);
+    }
+  };
+
+  const handleDeleteTag = async (e, tagId) => {
+    e.stopPropagation();
+    try {
+      await api.deleteTag(tagId);
+      if (selectedTag === tagId) setSelectedTag(null);
+      fetchTags();
+    } catch (e) {
+      console.error('Failed to delete tag:', e);
+    }
+  };
 
   // Clear selection when filters change
   useEffect(() => { setSelectedIds([]); }, [debouncedSearch, selectedTag]);
@@ -231,38 +259,77 @@ export default function ProjectList({ onSelectProject, onNewProject, onOpenProfi
         </div>
 
         {/* Tag filter chips */}
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button
-              onClick={() => setSelectedTag(null)}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                !selectedTag
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              {t('bulk.deselectAll').split(' ')[0] || 'All'}
-            </button>
-            {tags.map((tag) => (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {tags.length > 0 && (
+            <>
               <button
-                key={tag.id}
-                onClick={() => setSelectedTag(selectedTag === tag.id ? null : tag.id)}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                  selectedTag === tag.id
-                    ? 'ring-2 ring-offset-1 ring-indigo-500'
-                    : ''
+                onClick={() => setSelectedTag(null)}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  !selectedTag
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
-                style={{
-                  backgroundColor: selectedTag === tag.id ? tag.color : tag.color + '20',
-                  color: selectedTag === tag.id ? '#fff' : tag.color,
-                }}
               >
-                <Tag className="w-3 h-3" />
-                {tag.name}
+                {t('bulk.deselectAll').split(' ')[0] || 'All'}
               </button>
-            ))}
-          </div>
-        )}
+              {tags.map((tag) => (
+                <div key={tag.id} className="relative group/tag">
+                  <button
+                    onClick={() => setSelectedTag(selectedTag === tag.id ? null : tag.id)}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                      selectedTag === tag.id ? 'ring-2 ring-offset-1 ring-indigo-500' : ''
+                    }`}
+                    style={{
+                      backgroundColor: selectedTag === tag.id ? tag.color : tag.color + '20',
+                      color: selectedTag === tag.id ? '#fff' : tag.color,
+                    }}
+                  >
+                    <Tag className="w-3 h-3" />
+                    {tag.name}
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteTag(e, tag.id)}
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover/tag:opacity-100 transition-opacity"
+                    aria-label={t('projects.delete')}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* Add tag button/form */}
+          {showNewTag ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={newTagColor}
+                onChange={(e) => setNewTagColor(e.target.value)}
+                className="w-7 h-7 rounded-full border-0 cursor-pointer"
+              />
+              <input
+                type="text"
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
+                placeholder={t('tags.name')}
+                className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-28"
+                autoFocus
+              />
+              <button onClick={handleCreateTag} className="px-2 py-1 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">OK</button>
+              <button onClick={() => { setShowNewTag(false); setNewTagName(''); }} className="px-2 py-1 text-sm text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowNewTag(true)}
+              className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center gap-1"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {t('tags.add')}
+            </button>
+          )}
+        </div>
 
         {/* Bulk actions bar */}
         {showBulkActions && (
