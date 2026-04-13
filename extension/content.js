@@ -1,15 +1,17 @@
+// Cross-browser API
+const B = typeof browser !== 'undefined' ? browser : chrome;
+
 let enabled = false;
 
 async function safeSendMessage(payload) {
   try {
-    if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id || !chrome.runtime.sendMessage) {
+    if (!B || !B.runtime || !B.runtime.id || !B.runtime.sendMessage) {
       return null;
     }
     return await new Promise((resolve) => {
       try {
-        chrome.runtime.sendMessage(payload, (resp) => {
-          // chrome.runtime.lastError is set when context is invalidated
-          if (chrome.runtime && chrome.runtime.lastError) {
+        B.runtime.sendMessage(payload, (resp) => {
+          if (B.runtime && B.runtime.lastError) {
             resolve(null);
             return;
           }
@@ -24,18 +26,17 @@ async function safeSendMessage(payload) {
   }
 }
 
-// Сообщение от фона: включить/выключить режим
-chrome.runtime.onMessage.addListener((msg) => {
+// Messages from background: enable/disable mode
+B.runtime.onMessage.addListener((msg) => {
   if (msg?.type === 'set-capture-enabled') {
     enabled = !!msg.enabled;
   }
   if (msg?.type === 'deliver-screenshot') {
-    // Мы на вкладке приложения: доставим событие в DOM приложения
     window.postMessage({ type: 'scribe_screenshot', dataUrl: msg.dataUrl, meta: msg.meta }, '*');
   }
 });
 
-// Ловим клик на любых страницах, когда режим включен
+// Capture element info on click
 function getElementDescriptor(el) {
   try {
     if (!el || el.nodeType !== 1) return null;
@@ -45,7 +46,7 @@ function getElementDescriptor(el) {
     const classes = (el.className && typeof el.className === 'string') ? el.className.split(/\s+/).slice(0, 5) : undefined;
     const ariaLabel = el.getAttribute('aria-label') || undefined;
     let text = (el.innerText || el.textContent || '').trim();
-    if (text && text.length > 80) text = text.slice(0, 77) + '…';
+    if (text && text.length > 80) text = text.slice(0, 77) + '\u2026';
     const descriptor = { tag, role, id, classes, ariaLabel };
     if (text) descriptor.text = text;
     if (tag === 'input') {
@@ -81,7 +82,7 @@ window.addEventListener('click', async (e) => {
   });
 }, true);
 
-// Приём из приложения запросов на переключение/получение состояния
+// Listen for messages from the Scribe app
 window.addEventListener('message', async (event) => {
   const data = event.data;
   if (!data || typeof data !== 'object') return;
@@ -95,7 +96,7 @@ window.addEventListener('message', async (event) => {
   }
 });
 
-// Запросим начальное состояние при загрузке контент-скрипта
+// Request initial state on load
 safeSendMessage({ type: 'get-capture-state' }).then((resp) => {
   enabled = !!(resp && resp.enabled);
   window.postMessage({ type: 'scribe_capture_state', enabled }, '*');
