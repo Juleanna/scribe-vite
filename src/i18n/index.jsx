@@ -74,6 +74,11 @@ const messages = {
     tags: { title: 'Теги', add: 'Додати тег', name: 'Назва тегу', color: 'Колір' },
     bulk: { selected: 'Вибрано', deleteSelected: 'Видалити вибрані', selectAll: 'Вибрати всі', deselectAll: 'Зняти вибір' },
     theme: { dark: 'Темна тема', light: 'Світла тема' },
+    plan: { free: 'Безкоштовний', pro: 'Pro', team: 'Team', current: 'Поточний план', limit: 'Ліміт проектів', upgrade: 'Покращити план' },
+    brand: { name: 'Назва компанії', logo: 'Логотип (URL)' },
+    webhooks: { title: 'Webhooks', add: 'Додати webhook', url: 'URL', events: 'Події', active: 'Активний', secret: 'Секрет', noWebhooks: 'Немає webhooks' },
+    forgot: { title: 'Забули пароль?', send: 'Надіслати', sent: 'Перевірте вашу пошту', email: 'Ваш email', back: 'Назад до входу' },
+    verify: { title: 'Підтвердіть email', send: 'Надіслати підтвердження', verified: 'Email підтверджено!' },
   },
   en: {
     app: { defaultTitle: 'New Instruction', language: 'Language' },
@@ -148,6 +153,11 @@ const messages = {
     tags: { title: 'Tags', add: 'Add tag', name: 'Tag name', color: 'Color' },
     bulk: { selected: 'Selected', deleteSelected: 'Delete selected', selectAll: 'Select all', deselectAll: 'Deselect all' },
     theme: { dark: 'Dark mode', light: 'Light mode' },
+    plan: { free: 'Free', pro: 'Pro', team: 'Team', current: 'Current plan', limit: 'Project limit', upgrade: 'Upgrade plan' },
+    brand: { name: 'Company name', logo: 'Logo (URL)' },
+    webhooks: { title: 'Webhooks', add: 'Add webhook', url: 'URL', events: 'Events', active: 'Active', secret: 'Secret', noWebhooks: 'No webhooks' },
+    forgot: { title: 'Forgot password?', send: 'Send', sent: 'Check your email', email: 'Your email', back: 'Back to login' },
+    verify: { title: 'Verify email', send: 'Send verification', verified: 'Email verified!' },
   },
 };
 

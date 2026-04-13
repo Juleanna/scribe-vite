@@ -1,13 +1,17 @@
-import { useState } from 'react';
-import { ArrowLeft, Save, Key, User } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Save, Key, User, Plus, Trash2, Globe } from 'lucide-react';
 import { api } from '../api';
 import { useI18n } from '../i18n';
+
+const WEBHOOK_EVENTS = ['project.created', 'project.updated', 'step.created'];
 
 export default function Profile({ user, onBack, onUserUpdate }) {
   const { t, locale, setLocale } = useI18n();
 
   const [firstName, setFirstName] = useState(user.first_name || '');
   const [lastName, setLastName] = useState(user.last_name || '');
+  const [brandName, setBrandName] = useState(user.brand_name || '');
+  const [brandLogoUrl, setBrandLogoUrl] = useState(user.brand_logo_url || '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -17,11 +21,45 @@ export default function Profile({ user, onBack, onUserUpdate }) {
   const [pwSuccess, setPwSuccess] = useState(false);
   const [pwLoading, setPwLoading] = useState(false);
 
+  // Webhooks state
+  const [webhooks, setWebhooks] = useState([]);
+  const [webhooksLoading, setWebhooksLoading] = useState(false);
+  const [showWebhookModal, setShowWebhookModal] = useState(false);
+  const [newWebhookUrl, setNewWebhookUrl] = useState('');
+  const [newWebhookEvents, setNewWebhookEvents] = useState([]);
+
+  const isPaidPlan = user.plan === 'pro' || user.plan === 'team';
+
+  useEffect(() => {
+    if (isPaidPlan) {
+      loadWebhooks();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadWebhooks = async () => {
+    setWebhooksLoading(true);
+    try {
+      const res = await api.listWebhooks();
+      if (res.ok) {
+        const data = await res.json();
+        setWebhooks(Array.isArray(data) ? data : data.results || []);
+      }
+    } catch {} finally {
+      setWebhooksLoading(false);
+    }
+  };
+
   const handleSaveProfile = async () => {
     setSaving(true);
     setSaved(false);
     try {
-      const res = await api.updateMe({ first_name: firstName, last_name: lastName, locale });
+      const res = await api.updateMe({
+        first_name: firstName,
+        last_name: lastName,
+        locale,
+        brand_name: brandName,
+        brand_logo_url: brandLogoUrl,
+      });
       if (res.ok) {
         const updated = await res.json();
         onUserUpdate(updated);
@@ -55,6 +93,37 @@ export default function Profile({ user, onBack, onUserUpdate }) {
       setPwLoading(false);
     }
   };
+
+  const handleAddWebhook = async () => {
+    if (!newWebhookUrl) return;
+    try {
+      const res = await api.createWebhook({ url: newWebhookUrl, events: newWebhookEvents });
+      if (res.ok) {
+        const wh = await res.json();
+        setWebhooks(prev => [...prev, wh]);
+        setShowWebhookModal(false);
+        setNewWebhookUrl('');
+        setNewWebhookEvents([]);
+      }
+    } catch {}
+  };
+
+  const handleDeleteWebhook = async (id) => {
+    try {
+      const res = await api.deleteWebhook(id);
+      if (res.ok || res.status === 204) {
+        setWebhooks(prev => prev.filter(w => w.id !== id));
+      }
+    } catch {}
+  };
+
+  const toggleWebhookEvent = (event) => {
+    setNewWebhookEvents(prev =>
+      prev.includes(event) ? prev.filter(e => e !== event) : [...prev, event]
+    );
+  };
+
+  const planLimits = { free: 5, pro: 100, team: 1000 };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-4 md:p-6">
@@ -143,8 +212,57 @@ export default function Profile({ user, onBack, onUserUpdate }) {
           </div>
         </div>
 
+        {/* Plan info */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">{t('plan.current')}</h2>
+          <div className="flex items-center gap-3 mb-3">
+            <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+              user.plan === 'team' ? 'bg-purple-100 text-purple-700' :
+              user.plan === 'pro' ? 'bg-indigo-100 text-indigo-700' :
+              'bg-gray-100 text-gray-700'
+            }`}>
+              {t(`plan.${user.plan || 'free'}`)}
+            </span>
+            {user.plan_expires_at && (
+              <span className="text-xs text-gray-500">
+                {new Date(user.plan_expires_at).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-gray-600">
+            {t('plan.limit')}: {planLimits[user.plan || 'free']}
+          </p>
+        </div>
+
+        {/* Custom branding */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">{t('brand.name')}</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('brand.name')}</label>
+              <input
+                type="text"
+                value={brandName}
+                onChange={(e) => setBrandName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
+                placeholder={t('brand.name')}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('brand.logo')}</label>
+              <input
+                type="url"
+                value={brandLogoUrl}
+                onChange={(e) => setBrandLogoUrl(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
+                placeholder="https://example.com/logo.png"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Change password */}
-        <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Key className="w-5 h-5" />
             {t('profile.changePassword')}
@@ -186,6 +304,112 @@ export default function Profile({ user, onBack, onUserUpdate }) {
             </button>
           </form>
         </div>
+
+        {/* Webhooks — only for pro/team */}
+        {isPaidPlan && (
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                {t('webhooks.title')}
+              </h2>
+              <button
+                onClick={() => setShowWebhookModal(true)}
+                className="flex items-center gap-1 bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+              >
+                <Plus className="w-4 h-4" />
+                {t('webhooks.add')}
+              </button>
+            </div>
+
+            {webhooksLoading ? (
+              <p className="text-sm text-gray-500">{t('projects.loading')}</p>
+            ) : webhooks.length === 0 ? (
+              <p className="text-sm text-gray-500">{t('webhooks.noWebhooks')}</p>
+            ) : (
+              <div className="space-y-3">
+                {webhooks.map((wh) => (
+                  <div key={wh.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{wh.url}</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {(wh.events || []).map((ev) => (
+                            <span key={ev} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full">
+                              {ev}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                          <span>{t('webhooks.active')}: {wh.is_active ? 'Yes' : 'No'}</span>
+                          <span>{t('webhooks.secret')}: {wh.secret?.slice(0, 8)}...</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteWebhook(wh.id)}
+                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add webhook modal */}
+            {showWebhookModal && (
+              <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">{t('webhooks.add')}</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('webhooks.url')}</label>
+                      <input
+                        type="url"
+                        value={newWebhookUrl}
+                        onChange={(e) => setNewWebhookUrl(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
+                        placeholder="https://example.com/webhook"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">{t('webhooks.events')}</label>
+                      <div className="space-y-2">
+                        {WEBHOOK_EVENTS.map((ev) => (
+                          <label key={ev} className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={newWebhookEvents.includes(ev)}
+                              onChange={() => toggleWebhookEvent(ev)}
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            {ev}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-3 justify-end">
+                      <button
+                        onClick={() => { setShowWebhookModal(false); setNewWebhookUrl(''); setNewWebhookEvents([]); }}
+                        className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                      >
+                        {t('ext.close')}
+                      </button>
+                      <button
+                        onClick={handleAddWebhook}
+                        disabled={!newWebhookUrl}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                      >
+                        {t('webhooks.add')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

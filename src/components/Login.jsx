@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
+import { api } from '../api';
 
 export default function Login() {
   const { login, register } = useAuth();
   const { t } = useI18n();
   const [isRegister, setIsRegister] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,7 +46,80 @@ export default function Login() {
     }
   };
 
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await api.requestPasswordReset(email);
+      setForgotSent(true);
+    } catch {
+      setError(t('auth.networkError'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
+
+  if (showForgot) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center p-4 py-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl dark:shadow-gray-900/30 p-6 w-full max-w-full sm:max-w-sm">
+          <div className="text-center mb-5">
+            <div className="inline-flex items-center justify-center w-11 h-11 rounded-lg bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-bold text-xl mb-2">S</div>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">{t('forgot.title')}</h1>
+          </div>
+
+          {forgotSent ? (
+            <div className="text-center">
+              <p className="text-green-600 dark:text-green-400 text-sm mb-4">{t('forgot.sent')}</p>
+              <button
+                onClick={() => { setShowForgot(false); setForgotSent(false); setError(''); }}
+                className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium text-sm"
+              >
+                {t('forgot.back')}
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleForgotSubmit} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('forgot.email')}</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
+                  placeholder="you@example.com"
+                />
+              </div>
+
+              {error && <p className="text-red-600 dark:text-red-400 text-sm" role="alert">{error}</p>}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50 text-sm"
+              >
+                {loading ? '...' : t('forgot.send')}
+              </button>
+
+              <p className="text-center">
+                <button
+                  type="button"
+                  onClick={() => { setShowForgot(false); setError(''); }}
+                  className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium text-sm"
+                >
+                  {t('forgot.back')}
+                </button>
+              </p>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center p-4 py-8">
@@ -89,6 +165,17 @@ export default function Login() {
             {loading ? '...' : isRegister ? t('auth.register') : t('auth.login')}
           </button>
         </form>
+
+        {!isRegister && (
+          <p className="text-center mt-2">
+            <button
+              onClick={() => { setShowForgot(true); setError(''); }}
+              className="text-indigo-600 dark:text-indigo-400 hover:underline text-xs font-medium"
+            >
+              {t('forgot.title')}
+            </button>
+          </p>
+        )}
 
         <div className="mt-4">
           <div className="relative">
