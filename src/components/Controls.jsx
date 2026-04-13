@@ -25,7 +25,8 @@ export default function Controls({
   fileInputRef,
 }) {
   const { t } = useI18n();
-  const inputRef = fileInputRef || useRef(null);
+  const localRef = useRef(null);
+  const inputRef = fileInputRef || localRef;
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6 mb-6">

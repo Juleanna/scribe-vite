@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs ls -lh)",
+      "Bash(npx vite build)",
+      "Bash(npm run build)",
+      "Bash(ls node_modules/.bin/vite*)",
+      "Bash(npm install)",
+      "Bash(npm run lint)",
+      "Bash(pip install Django==5.1 djangorestframework==3.15.2 djangorestframework-simplejwt==5.4.0 django-cors-headers==4.6.0 psycopg2-binary==2.9.10 gunicorn==23.0.0 requests==2.32.3 dj-database-url==2.3.0 Pillow==11.1.0 anthropic==0.42.0)",
+      "Bash(pip install --user Django==5.1 djangorestframework==3.15.2 djangorestframework-simplejwt==5.4.0 django-cors-headers==4.6.0 psycopg2-binary==2.9.10 gunicorn==23.0.0 requests==2.32.3 dj-database-url==2.3.0 Pillow==11.1.0 anthropic==0.42.0)",
+      "Bash(pip install --no-cache-dir Django==5.1 djangorestframework==3.15.2 djangorestframework-simplejwt==5.4.0 django-cors-headers==4.6.0 psycopg2-binary==2.9.10 gunicorn==23.0.0 requests==2.32.3 dj-database-url==2.3.0 Pillow==11.1.0 anthropic==0.42.0)",
+      "Bash(pip install --no-cache-dir Django==5.1 djangorestframework==3.15.2 djangorestframework-simplejwt==5.4.0 django-cors-headers==4.6.0 \"psycopg[binary]\" requests==2.32.3 dj-database-url==2.3.0 Pillow==11.1.0 anthropic)",
+      "Bash(pip install --no-cache-dir Django djangorestframework djangorestframework-simplejwt django-cors-headers \"psycopg[binary]\" requests dj-database-url Pillow anthropic)",
+      "Bash(django-admin startproject scribe .)",
+      "Bash(python -m django startproject scribe /c/scribe-vite/backend)",
+      "Bash(python manage.py startapp accounts)",
+      "Bash(python manage.py startapp projects)",
+      "Bash(python manage.py startapp ai_proxy)",
+      "Bash(python manage.py makemigrations accounts projects)",
+      "Bash(python manage.py migrate)",
+      "Bash(python manage.py check)",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
