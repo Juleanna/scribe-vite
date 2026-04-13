@@ -6,6 +6,16 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load .env file if exists (for local development)
+_env_path = BASE_DIR / '.env'
+if _env_path.is_file():
+    with open(_env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, _, value = line.partition('=')
+                os.environ.setdefault(key.strip(), value.strip())
+
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
