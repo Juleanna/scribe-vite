@@ -35,7 +35,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return ProjectCreateUpdateSerializer
 
     def get_queryset_for_list(self):
-        return self.get_queryset().annotate(step_count=Count('steps'))
+        return self.get_queryset().annotate(step_count=Count('steps')).order_by('-updated_at')
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset_for_list())
