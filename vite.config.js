@@ -6,13 +6,13 @@ export default defineConfig({
   plugins: [react()],
   server: {
     hmr: {
-      protocol: 'ws',
-      host: 'localhost',
+      overlay: false,
     },
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+        ws: false,
       },
       '/media': {
         target: 'http://localhost:8000',
