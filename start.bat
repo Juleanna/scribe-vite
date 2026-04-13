@@ -36,9 +36,9 @@ if not exist "node_modules" (
 )
 
 echo [3/4] Running DB migrations...
-cd backend
-python manage.py migrate --noinput >nul 2>&1
-cd ..
+cd /d %~dp0backend
+python manage.py migrate --noinput
+cd /d %~dp0
 
 echo [4/4] Starting servers...
 echo.
@@ -50,7 +50,7 @@ echo   Press Ctrl+C to stop
 echo ========================================
 echo.
 
-start "Scribe Backend" /min cmd /k "set DJANGO_DEBUG=True && cd /d %~dp0backend && python manage.py runserver 8000"
+start "Scribe Backend" cmd /k "set DJANGO_DEBUG=True && cd /d %~dp0backend && python manage.py runserver 8000"
 
 timeout /t 3 /nobreak >nul
 
