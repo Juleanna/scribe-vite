@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import StepCard from './StepCard';
 import { Camera } from 'lucide-react';
 import { useI18n } from '../i18n';
@@ -12,8 +13,36 @@ export default function StepList({
   regenerateDescription,
   moveStep,
   deleteStep,
+  onReorder,
 }) {
   const { t } = useI18n();
+  const [dragIndex, setDragIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+
+  const handleDragStart = (index) => (e) => {
+    setDragIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (index) => (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (index) => (e) => {
+    e.preventDefault();
+    if (dragIndex !== null && dragIndex !== index) {
+      onReorder(dragIndex, index);
+    }
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
 
   if (steps.length === 0) {
     return (
@@ -47,6 +76,12 @@ export default function StepList({
           moveStep={(id, dir) => moveStep(id, dir, steps.length)}
           isLast={index === steps.length - 1}
           deleteStep={deleteStep}
+          onDragStart={handleDragStart(index)}
+          onDragOver={handleDragOver(index)}
+          onDrop={handleDrop(index)}
+          onDragEnd={handleDragEnd}
+          isDragging={dragIndex === index}
+          isDragOver={dragOverIndex === index && dragIndex !== index}
         />)
       )}
     </div>

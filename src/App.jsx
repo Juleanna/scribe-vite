@@ -69,19 +69,6 @@ function InnerApp() {
     }
   };
 
-  const regenerateDescription = async (stepId) => {
-    const step = steps.find((s) => s.id === stepId);
-    if (!step || step.type !== 'image') return;
-    setSteps(prev => prev.map((s) => (s.id === stepId ? { ...s, isGenerating: true } : s)));
-    let description = useLocalRecognition
-      ? mediaCapture.getLocalDescription?.() || 'Немає локального опису дій'
-      : await mediaCapture.generateDescription?.(step.media);
-    setSteps(prev => prev.map((s) => (s.id === stepId ? { ...s, description: description || 'Опис недоступний', isGenerating: false } : s)));
-    if (currentProject?.id) {
-      api.updateStep(currentProject.id, stepId, { description: description || '' }).catch(() => {});
-    }
-  };
-
   const updateStep = (id, field, value) => {
     setSteps(prev => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
     if (currentProject?.id) {
@@ -148,6 +135,19 @@ function InnerApp() {
     setRecordOnClickMode,
     setSteps,
   });
+
+  const regenerateDescription = async (stepId) => {
+    const step = steps.find((s) => s.id === stepId);
+    if (!step || step.type !== 'image') return;
+    setSteps(prev => prev.map((s) => (s.id === stepId ? { ...s, isGenerating: true } : s)));
+    let description = useLocalRecognition
+      ? mediaCapture.getLocalDescription?.() || 'Немає локального опису дій'
+      : await mediaCapture.generateDescription?.(step.media);
+    setSteps(prev => prev.map((s) => (s.id === stepId ? { ...s, description: description || 'Опис недоступний', isGenerating: false } : s)));
+    if (currentProject?.id) {
+      api.updateStep(currentProject.id, stepId, { description: description || '' }).catch(() => {});
+    }
+  };
 
   // --- Export functions ---
 

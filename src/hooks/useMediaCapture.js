@@ -270,6 +270,9 @@ export default function useMediaCapture({ autoDescribe, useLocalRecognition, ann
     previousScreenshotRef,
     formatElementFromMeta,
     objectUrlsRef,
+    // Exposed for regenerateDescription in App
+    getLocalDescription,
+    generateDescription,
   };
 }
 

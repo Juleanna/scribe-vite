@@ -1,11 +1,18 @@
 import { Edit2, Save, MoveUp, MoveDown, Trash2, Sparkles, Brain } from 'lucide-react';
 import { useI18n } from '../i18n';
 
-export default function StepCard({ step, index, editingStep, setEditingStep, autoDescribe, useLocalRecognition, updateStep, regenerateDescription, moveStep, deleteStep, isLast }) {
+export default function StepCard({ step, index, editingStep, setEditingStep, autoDescribe, useLocalRecognition, updateStep, regenerateDescription, moveStep, deleteStep, isLast, onDragStart, onDragOver, onDrop, onDragEnd, isDragging, isDragOver }) {
   const { t } = useI18n();
   const isEditing = editingStep === step.id;
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 p-4 md:p-6">
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 p-4 md:p-6 transition-all cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-50 border-2 border-dashed border-indigo-400' : ''} ${isDragOver ? 'border-2 border-dashed border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : ''}`}
+    >
       <div className="flex flex-col md:flex-row items-start gap-3 md:gap-4">
         <div className="flex items-center gap-3 md:block flex-shrink-0">
           <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-base md:text-lg">
