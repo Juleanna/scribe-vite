@@ -54,6 +54,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
+        project_count = Project.objects.filter(owner=self.request.user).count()
+        if project_count >= 100:
+            from rest_framework.exceptions import Throttled
+            raise Throttled(
+                detail='Project limit reached. You cannot have more than 100 projects.',
+            )
         serializer.save(owner=self.request.user)
 
     def perform_destroy(self, instance):
@@ -90,6 +96,14 @@ class StepViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         project = self.get_project()
+
+        step_count = Step.objects.filter(project=project).count()
+        if step_count >= 500:
+            return Response(
+                {'detail': 'Step limit reached. A project cannot have more than 500 steps.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = StepCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 

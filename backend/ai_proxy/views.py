@@ -5,9 +5,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from scribe.throttles import AIRateThrottle
+
 
 class DescribeImageView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [AIRateThrottle]
 
     def post(self, request):
         api_key = settings.ANTHROPIC_API_KEY

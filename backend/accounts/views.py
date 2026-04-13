@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from scribe.throttles import AuthRateThrottle, RegisterRateThrottle
 from .serializers import ChangePasswordSerializer, RegisterSerializer, UserSerializer
 
 User = get_user_model()
@@ -26,6 +27,7 @@ class RegisterView(generics.CreateAPIView):
 
     serializer_class = RegisterSerializer
     permission_classes = (AllowAny,)
+    throttle_classes = (RegisterRateThrottle,)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -45,6 +47,7 @@ class LoginView(TokenObtainPairView):
     """
 
     permission_classes = (AllowAny,)
+    throttle_classes = (AuthRateThrottle,)
 
 
 class MeView(generics.RetrieveUpdateAPIView):
