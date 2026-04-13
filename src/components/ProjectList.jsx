@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Clock, Layers } from 'lucide-react';
+import { Plus, Trash2, Clock, Layers, LogOut, User } from 'lucide-react';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 
-export default function ProjectList({ onSelectProject, onNewProject }) {
+export default function ProjectList({ onSelectProject, onNewProject, onOpenProfile, user, onLogout }) {
   const { t } = useI18n();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,13 +70,40 @@ export default function ProjectList({ onSelectProject, onNewProject }) {
             <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 font-bold text-xl">S</span>
             <h1 className="text-3xl font-bold text-gray-800">{t('projects.title')}</h1>
           </div>
-          <button
-            onClick={handleNew}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            {t('projects.new')}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleNew}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+            >
+              <Plus className="w-5 h-5" />
+              {t('projects.new')}
+            </button>
+
+            {user && (
+              <div className="flex items-center gap-2 ml-2 pl-3 border-l border-gray-300">
+                <button
+                  onClick={onOpenProfile}
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  title={t('profile.title')}
+                >
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-full" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold">
+                      {(user.email || '?')[0].toUpperCase()}
+                    </div>
+                  )}
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                  title={t('header.logout')}
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {projects.length === 0 ? (

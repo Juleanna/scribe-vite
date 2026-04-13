@@ -7,13 +7,15 @@ import Controls from './components/Controls';
 import StepList from './components/StepList';
 import Login from './components/Login';
 import ProjectList from './components/ProjectList';
+import Profile from './components/Profile';
 import ActionTracker from './actionTracker';
 
 function InnerApp() {
-  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
+  const { user, setUser, isAuthenticated, isLoading: authLoading, logout } = useAuth();
 
   // App-level state: which screen to show
   const [currentProject, setCurrentProject] = useState(null); // null = project list
+  const [showProfile, setShowProfile] = useState(false);
   const [steps, setSteps] = useState([]);
   const [editingStep, setEditingStep] = useState(null);
   const [projectTitle, setProjectTitle] = useState('Нова інструкція');
@@ -593,12 +595,26 @@ function InnerApp() {
     return <Login />;
   }
 
+  // Profile screen
+  if (showProfile) {
+    return (
+      <Profile
+        user={user}
+        onBack={() => setShowProfile(false)}
+        onUserUpdate={(updated) => setUser(updated)}
+      />
+    );
+  }
+
   // Authenticated but no project selected — show project list
   if (!currentProject) {
     return (
       <ProjectList
         onSelectProject={(project) => setCurrentProject(project)}
         onNewProject={(project) => setCurrentProject(project)}
+        onOpenProfile={() => setShowProfile(true)}
+        user={user}
+        onLogout={logout}
       />
     );
   }
@@ -619,6 +635,7 @@ function InnerApp() {
           onBackToProjects={handleBackToProjects}
           user={user}
           onLogout={logout}
+          onOpenProfile={() => setShowProfile(true)}
         />
         <Controls
           autoDescribe={autoDescribe}

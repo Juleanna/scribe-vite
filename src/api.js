@@ -92,6 +92,20 @@ class ApiClient {
     return this.request('/auth/me/');
   }
 
+  async updateMe(data) {
+    return this.request('/auth/me/', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async changePassword(oldPassword, newPassword) {
+    return this.request('/auth/change-password/', {
+      method: 'POST',
+      body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+    });
+  }
+
   // Projects
   async listProjects() {
     return this.request('/projects/');

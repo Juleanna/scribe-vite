@@ -32,5 +32,10 @@ class LoginSerializer(serializers.Serializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "email", "locale", "avatar_url")
+        fields = ("id", "email", "first_name", "last_name", "locale", "avatar_url")
         read_only_fields = ("id", "email")
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, min_length=8)

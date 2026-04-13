@@ -14,6 +14,7 @@ export default function Header({
   onBackToProjects,
   user,
   onLogout,
+  onOpenProfile,
 }) {
   const { t, locale, setLocale } = useI18n();
   const [isEditing, setIsEditing] = useState(false);
@@ -104,14 +105,20 @@ export default function Header({
           {/* User menu */}
           {user && (
             <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-200">
-              {user.avatar_url ? (
-                <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-full" />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold">
-                  {(user.email || '?')[0].toUpperCase()}
-                </div>
-              )}
-              <span className="text-sm text-gray-600 hidden md:inline">{user.email}</span>
+              <button
+                onClick={onOpenProfile}
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                title={t('profile.title')}
+              >
+                {user.avatar_url ? (
+                  <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-full" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold">
+                    {(user.email || '?')[0].toUpperCase()}
+                  </div>
+                )}
+                <span className="text-sm text-gray-600 hidden md:inline">{user.email}</span>
+              </button>
               <button
                 onClick={onLogout}
                 className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"

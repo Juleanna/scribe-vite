@@ -12,6 +12,7 @@ urlpatterns = [
     path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("me/", views.MeView.as_view(), name="me"),
     path("logout/", views.LogoutView.as_view(), name="logout"),
+    path("change-password/", views.ChangePasswordView.as_view(), name="change-password"),
     # Google OAuth
     path("google/", views.GoogleOAuthStartView.as_view(), name="google-start"),
     path("google/callback/", views.GoogleOAuthCallbackView.as_view(), name="google-callback"),
